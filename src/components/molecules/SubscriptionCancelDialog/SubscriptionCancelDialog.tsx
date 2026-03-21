@@ -99,7 +99,10 @@ const SubscriptionCancelDialog = ({ isOpen, onOpenChange, subscriptionId, refetc
 									description: 'Keep service active until period end, then cancel automatically.',
 								},
 							]}
-							onChange={(value) => setCancellationType(value as SUBSCRIPTION_CANCELLATION_TYPE)}
+							onChange={(value) => {
+								setCancellationType(value as SUBSCRIPTION_CANCELLATION_TYPE);
+								setGenerateInvoice(false);
+							}}
 						/>
 						<Select
 							label='Proration behavior'
@@ -121,15 +124,17 @@ const SubscriptionCancelDialog = ({ isOpen, onOpenChange, subscriptionId, refetc
 					</div>
 				</div>
 
-				<div className='rounded-md border border-border p-4 space-y-3'>
-					<p className='text-sm font-medium text-foreground'>Invoice behavior</p>
-					<Toggle
-						label='Generate invoice'
-						description='Enabled: send generate_invoice. Disabled: send skip.'
-						checked={generateInvoice}
-						onChange={setGenerateInvoice}
-					/>
-				</div>
+				{cancellationType === SUBSCRIPTION_CANCELLATION_TYPE.IMMEDIATE && (
+					<div className='rounded-md border border-border p-4 space-y-3'>
+						<p className='text-sm font-medium text-foreground'>Invoice behavior</p>
+						<Toggle
+							label='Generate invoice'
+							description='Enabled: send generate_invoice. Disabled: send skip.'
+							checked={generateInvoice}
+							onChange={setGenerateInvoice}
+						/>
+					</div>
+				)}
 
 				<div className='space-y-1'>
 					<Input
