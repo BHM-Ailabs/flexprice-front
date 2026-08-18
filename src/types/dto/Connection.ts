@@ -33,6 +33,11 @@ export interface CreateConnectionPayload {
 				webhook_secret?: string;
 		  }
 		| {
+				provider_type: CONNECTION_PROVIDER_TYPE.PAYSTACK;
+				public_key?: string;
+				secret_key: string;
+		  }
+		| {
 				provider_type: CONNECTION_PROVIDER_TYPE.S3;
 				aws_access_key_id?: string;
 				aws_secret_access_key?: string;

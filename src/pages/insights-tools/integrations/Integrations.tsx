@@ -11,6 +11,7 @@ import ConnectionApi from '@/api/ConnectionApi';
 import { CONNECTION_PROVIDER_TYPE } from '@/models/Connection';
 import StripeConnectionDrawer from '@/components/molecules/StripeConnectionDrawer';
 import RazorpayConnectionDrawer from '@/components/molecules/RazorpayConnectionDrawer';
+import PaystackConnectionDrawer from '@/components/molecules/PaystackConnectionDrawer';
 import ChargebeeConnectionDrawer from '@/components/molecules/ChargebeeConnectionDrawer';
 import HubSpotConnectionDrawer from '@/components/molecules/HubSpotConnectionDrawer';
 import QuickBooksConnectionDrawer from '@/components/molecules/QuickBooksConnectionDrawer/QuickBooksConnectionDrawer';
@@ -125,6 +126,24 @@ const Integrations = () => {
 				<>
 					{activeIntegration.name.toLowerCase() === CONNECTION_PROVIDER_TYPE.STRIPE ? (
 						<StripeConnectionDrawer
+							isOpen={isDrawerOpen}
+							onOpenChange={(open) => {
+								setIsDrawerOpen(open);
+								if (!open) {
+									setEditingConnection(null);
+									setActiveIntegration(null);
+								}
+							}}
+							connection={editingConnection}
+							onSave={() => {
+								connectionQueries.forEach((q) => q.refetch?.());
+								setIsDrawerOpen(false);
+								setEditingConnection(null);
+								setActiveIntegration(null);
+							}}
+						/>
+					) : activeIntegration.name.toLowerCase() === CONNECTION_PROVIDER_TYPE.PAYSTACK ? (
+						<PaystackConnectionDrawer
 							isOpen={isDrawerOpen}
 							onOpenChange={(open) => {
 								setIsDrawerOpen(open);

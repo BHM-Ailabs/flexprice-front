@@ -55,6 +55,27 @@ export const integrations: Integration[] = [
 		],
 	},
 	{
+		name: 'Paystack',
+		logo: '/assets/logo/paystack.svg',
+		websiteUrl: 'https://paystack.com',
+		docsUrl: 'https://github.com/BHM-Ailabs/flexprice/blob/main/docs/integrations/paystack.md',
+		description: 'Collect NGN and other supported payments through secure Paystack-hosted checkout.',
+		tags: ['Payments', 'Hosted Checkout'],
+		type: 'available',
+		info: [
+			{
+				title: 'Overview',
+				description: [
+					'Create hosted Paystack checkout links from FlexPrice invoices and reconcile successful charges through signed webhooks.',
+				],
+			},
+			{
+				title: 'Secure payment confirmation',
+				description: ['Webhook signatures and transaction details are verified server-side before FlexPrice marks a payment successful.'],
+			},
+		],
+	},
+	{
 		name: 'Razorpay',
 		websiteUrl: 'https://razorpay.com',
 		docsUrl: 'https://docs.flexprice.io/integrations/razorpay/',

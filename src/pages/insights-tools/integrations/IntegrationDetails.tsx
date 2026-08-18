@@ -6,6 +6,7 @@ import { useState } from 'react';
 import IntegrationDrawer from '@/components/molecules/IntegrationDrawer/IntegrationDrawer';
 import StripeConnectionDrawer from '@/components/molecules/StripeConnectionDrawer';
 import RazorpayConnectionDrawer from '@/components/molecules/RazorpayConnectionDrawer';
+import PaystackConnectionDrawer from '@/components/molecules/PaystackConnectionDrawer';
 import ChargebeeConnectionDrawer from '@/components/molecules/ChargebeeConnectionDrawer';
 import HubSpotConnectionDrawer from '@/components/molecules/HubSpotConnectionDrawer';
 import QuickBooksConnectionDrawer from '@/components/molecules/QuickBooksConnectionDrawer/QuickBooksConnectionDrawer';
@@ -138,6 +139,16 @@ const IntegrationDetails = () => {
 			{/* Integration Drawer for Add/Edit */}
 			{name.toLowerCase() === CONNECTION_PROVIDER_TYPE.STRIPE ? (
 				<StripeConnectionDrawer
+					isOpen={isDrawerOpen}
+					onOpenChange={(open) => {
+						setIsDrawerOpen(open);
+						if (!open) setEditingConnection(null);
+					}}
+					connection={editingConnection}
+					onSave={handleSaveConnection}
+				/>
+			) : name.toLowerCase() === CONNECTION_PROVIDER_TYPE.PAYSTACK ? (
+				<PaystackConnectionDrawer
 					isOpen={isDrawerOpen}
 					onOpenChange={(open) => {
 						setIsDrawerOpen(open);
