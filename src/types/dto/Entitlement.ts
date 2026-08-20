@@ -60,6 +60,12 @@ export interface CreateEntitlementRequest {
 	usage_reset_period?: ENTITLEMENT_USAGE_RESET_PERIOD;
 	is_soft_limit?: boolean;
 	static_value?: string;
+	config_value?: Record<string, unknown>;
+	grant_measure?: 'quantity' | 'amount';
+	grant_duration_value?: number;
+	grant_duration_unit?: 'hour' | 'day' | 'week';
+	grant_quota?: string;
+	aggregation_mode?: 'additive' | 'parallel';
 	entity_type: ENTITLEMENT_ENTITY_TYPE;
 	entity_id: string;
 }
@@ -73,6 +79,13 @@ export interface UpdateEntitlementRequest {
 	usage_reset_period?: ENTITLEMENT_USAGE_RESET_PERIOD;
 	is_soft_limit?: boolean;
 	static_value?: string;
+	config_value?: Record<string, unknown>;
+	grant_measure?: 'quantity' | 'amount';
+	grant_duration_value?: number;
+	grant_duration_unit?: 'hour' | 'day' | 'week';
+	grant_quota?: string;
+	aggregation_mode?: 'additive' | 'parallel';
+	clear_grant_config?: boolean;
 	entity_type?: ENTITLEMENT_ENTITY_TYPE;
 	entity_id?: string;
 }

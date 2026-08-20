@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import Feature, { FEATURE_TYPE } from '@/models/Feature';
 import FeatureApi from '@/api/FeatureApi';
 import { useQuery } from '@tanstack/react-query';
-import { Gauge, SquareCheckBig, Wrench, ChevronDown } from 'lucide-react';
+import { Braces, Gauge, SquareCheckBig, Wrench, ChevronDown } from 'lucide-react';
 import React, { FC, useEffect } from 'react';
 import { ENTITY_STATUS } from '@/models/base';
 import { Skeleton } from '@/components/ui';
@@ -36,6 +36,8 @@ const getFeatureIcon = (featureType: string) => {
 		return <Gauge className={className} />;
 	} else if (featureType === FEATURE_TYPE.STATIC) {
 		return <Wrench className={className} />;
+	} else if (featureType === FEATURE_TYPE.CONFIG) {
+		return <Braces className={className} />;
 	}
 };
 

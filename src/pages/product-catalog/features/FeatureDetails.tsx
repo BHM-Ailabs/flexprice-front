@@ -236,6 +236,9 @@ const FeatureDetails = () => {
 						</span>
 					);
 				}
+				if (rowData.feature_type === FEATURE_TYPE.CONFIG) {
+					return rowData.config_value ? JSON.stringify(rowData.config_value) : '--';
+				}
 				return <span className='text-muted-foreground'>--</span>;
 			},
 		},

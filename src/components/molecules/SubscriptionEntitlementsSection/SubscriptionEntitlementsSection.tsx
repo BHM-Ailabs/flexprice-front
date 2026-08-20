@@ -84,6 +84,8 @@ const SubscriptionEntitlementsSection: FC<SubscriptionEntitlementsSectionProps> 
 				return <Chip label='Boolean' variant='success' />;
 			case 'static':
 				return <Chip label='Static' variant='warning' />;
+			case 'config':
+				return <Chip label='Configuration' variant='default' />;
 			default:
 				return <Chip label={featureType} variant='info' />;
 		}
@@ -103,6 +105,9 @@ const SubscriptionEntitlementsSection: FC<SubscriptionEntitlementsSectionProps> 
 			return entitlementData?.static_value || '--';
 		} else if (featureType === FEATURE_TYPE.BOOLEAN) {
 			return entitlementData?.is_enabled ? 'Enabled' : 'Disabled';
+		} else if (featureType === FEATURE_TYPE.CONFIG) {
+			const config = entitlementData?.config_values?.[0] ?? entitlementData?.config_value;
+			return config ? JSON.stringify(config) : '--';
 		}
 		return '--';
 	};

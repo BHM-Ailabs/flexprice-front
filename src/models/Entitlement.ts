@@ -26,6 +26,7 @@ export interface Entitlement extends BaseModel {
 	readonly entity_type: ENTITLEMENT_ENTITY_TYPE;
 	readonly entity_id: string;
 	readonly static_value: string;
+	readonly config_value?: Record<string, unknown>;
 	readonly tenant_id: string;
 	readonly usage_limit: number | null;
 	readonly usage_reset_period: ENTITLEMENT_USAGE_RESET_PERIOD | null;
@@ -35,4 +36,10 @@ export interface Entitlement extends BaseModel {
 	readonly start_date?: string;
 	/** ISO date string. Optional end date for the entitlement. */
 	readonly end_date?: string;
+	/** Optional rolling grant configuration for metered feature quotas. */
+	readonly grant_measure?: 'quantity' | 'amount';
+	readonly grant_duration_value?: number;
+	readonly grant_duration_unit?: 'hour' | 'day' | 'week';
+	readonly grant_quota?: string;
+	readonly aggregation_mode?: 'additive' | 'parallel';
 }

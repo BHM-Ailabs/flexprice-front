@@ -9,6 +9,8 @@ import AuthService from '@/core/auth/AuthService';
 import LandingSection from './LandingSection';
 import RegionSelector from '@/components/molecules/RegionSelector/RegionSelector';
 import { AuthTab } from './authTabs';
+import PlaqadLogin from './PlaqadLogin';
+import { PLAQAD_AUTH_ENABLED } from '@/core/auth/PlaqadAuth';
 
 const AuthPage: React.FC = () => {
 	const navigate = useNavigate();
@@ -79,6 +81,8 @@ const AuthPage: React.FC = () => {
 				);
 		}
 	};
+
+	if (PLAQAD_AUTH_ENABLED) return <PlaqadLogin />;
 
 	return (
 		<div className='flex w-full min-h-screen bg-white page !p-0 !flex-row'>

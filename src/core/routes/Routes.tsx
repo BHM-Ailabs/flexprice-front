@@ -6,6 +6,7 @@ import { TenantMetadataKey } from '@/models/Tenant';
 import {
 	// Auth pages
 	Auth,
+	PlaqadCallback,
 	SignupConfirmation,
 	ResendVerification,
 	EmailVerification,
@@ -105,6 +106,7 @@ export const RouteNames = {
 	signupConfirmation: '/auth/signup/confirmation',
 	resendVerification: '/auth/resend-verification',
 	verifyEmail: '/auth/verify-email',
+	plaqadCallback: '/auth/plaqad/callback',
 
 	// Dashboard routes
 	homeDashboard: '/home',
@@ -207,6 +209,10 @@ export const MainRouter = createBrowserRouter([
 	{
 		path: RouteNames.auth,
 		element: <Auth />,
+	},
+	{
+		path: RouteNames.plaqadCallback,
+		element: <PlaqadCallback />,
 	},
 	{
 		path: RouteNames.signupConfirmation,
