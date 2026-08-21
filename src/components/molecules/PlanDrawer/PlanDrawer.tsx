@@ -9,6 +9,7 @@ import { SIDEBAR_PRICING_PROMO_QUERY_KEY } from '@/hooks/useShouldShowSidebarPri
 import { useNavigate } from 'react-router';
 import { RouteNames } from '@/core/routes/Routes';
 import { CreatePlanRequest, UpdatePlanRequest, PlanResponse, CreatePlanResponse } from '@/types/dto';
+import { WebsitePublishingSection } from '@/components/organisms/PlanForm';
 interface Props {
 	data?: Plan | null;
 	open?: boolean;
@@ -115,6 +116,14 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 		return Object.keys(newErrors).length === 0;
 	};
 
+	const handleStructuredMetadataChange = (metadata: NonNullable<CreatePlanRequest['metadata']>) => {
+		setFormData((previous) => ({ ...previous, metadata }));
+		setMetadataString(JSON.stringify(metadata, null, 2));
+		if (errors.metadata) {
+			setErrors((previous) => ({ ...previous, metadata: undefined }));
+		}
+	};
+
 	const handleSave = () => {
 		if (!validateForm()) {
 			return;
@@ -194,10 +203,21 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 			/>
 
 			<Spacer height={'20px'} />
+			<WebsitePublishingSection metadata={formData.metadata} onChange={handleStructuredMetadataChange} />
+
+			<Spacer height={'20px'} />
 			<Textarea
 				value={metadataString}
 				onChange={(e) => {
 					setMetadataString(e);
+					try {
+						const parsed: unknown = e.trim() ? JSON.parse(e) : {};
+						if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+							setFormData((previous) => ({ ...previous, metadata: parsed as Record<string, string> }));
+						}
+					} catch {
+						// Validation below owns the error state while the operator is typing.
+					}
 					if (errors.metadata) {
 						setErrors({ ...errors, metadata: undefined });
 					}
@@ -205,8 +225,8 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 				error={errors.metadata}
 				className='min-h-[100px]'
 				placeholder='{"key": "value"}'
-				label='Metadata (Optional)'
-				description='Additional metadata as JSON. All values must be strings.'
+				label='Advanced metadata (Optional)'
+				description='For integration-specific values not covered by the structured options above. All values must be strings.'
 			/>
 
 			<Spacer height={'20px'} />

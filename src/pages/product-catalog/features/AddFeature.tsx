@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+import { PLAQAD_PRODUCT_OPTIONS } from '@/constants/plaqad';
 
 // Feature type options constant
 const FEATURE_TYPE_OPTIONS: SelectOption[] = [
@@ -47,16 +48,6 @@ const FEATURE_TYPE_OPTIONS: SelectOption[] = [
 		suffixIcon: <Braces className='size-4' />,
 		value: FEATURE_TYPE.CONFIG,
 	},
-];
-
-const PLAQAD_PRODUCT_OPTIONS: SelectOption[] = [
-	{ label: 'Plaqad Intel', value: 'intel' },
-	{ label: 'Plaqad IQ', value: 'iq' },
-	{ label: 'Plaqad Studio Plus', value: 'maestro' },
-	{ label: 'Plaqad OS', value: 'os' },
-	{ label: 'Plaqad PA', value: 'pa' },
-	{ label: 'Plaqad Studio', value: 'studio' },
-	{ label: 'Plaqad Talent', value: 'talent' },
 ];
 
 const normalizePlaqadOperation = (operation: string) => operation.trim().toLowerCase().replace(/\s+/g, '_');
