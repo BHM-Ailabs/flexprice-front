@@ -1,5 +1,7 @@
 import { Metadata } from '@/models';
 
+export type PlanWebsiteCtaAction = 'auto' | 'subscribe' | 'sales' | 'custom';
+
 export interface PlanWebsiteSettings {
 	public: boolean;
 	products: string[];
@@ -10,11 +12,22 @@ export interface PlanWebsiteSettings {
 	highlight: boolean;
 	displayOrder: string;
 	features: string[];
+	ctaAction: PlanWebsiteCtaAction;
 	ctaLabel: string;
 	ctaHref: string;
 }
 
 const optionalString = (value: string | undefined) => value?.trim() ?? '';
+
+const ctaAction = (metadata: Metadata): PlanWebsiteCtaAction => {
+	const configured = optionalString(metadata.website_cta_action);
+	if (configured === 'subscribe' || configured === 'sales' || configured === 'custom') return configured;
+
+	const legacyPath = optionalString(metadata.website_cta_href);
+	if (legacyPath === '/contact') return 'sales';
+	if (legacyPath) return 'custom';
+	return 'auto';
+};
 
 const stringList = (value: string | undefined): string[] => {
 	if (!value) return [];
@@ -40,6 +53,7 @@ export function planWebsiteSettingsFromMetadata(metadata: Metadata = {}): PlanWe
 		highlight: metadata.website_highlight === 'true',
 		displayOrder: optionalString(metadata.website_display_order),
 		features: stringList(metadata.website_features),
+		ctaAction: ctaAction(metadata),
 		ctaLabel: optionalString(metadata.website_cta_label),
 		ctaHref: optionalString(metadata.website_cta_href),
 	};
@@ -70,7 +84,12 @@ export function applyPlanWebsiteSettings(metadata: Metadata = {}, settings: Plan
 	setOptional(next, 'website_badge', settings.badge);
 	setOptional(next, 'website_display_order', settings.displayOrder);
 	setOptional(next, 'website_cta_label', settings.ctaLabel);
-	setOptional(next, 'website_cta_href', settings.ctaHref);
+
+	if (settings.ctaAction === 'auto') delete next.website_cta_action;
+	else next.website_cta_action = settings.ctaAction;
+
+	if (settings.ctaAction === 'custom') setOptional(next, 'website_cta_href', settings.ctaHref);
+	else delete next.website_cta_href;
 
 	if (settings.features.length > 0) next.website_features = JSON.stringify(settings.features);
 	else delete next.website_features;
