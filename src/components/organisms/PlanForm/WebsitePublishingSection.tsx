@@ -1,4 +1,4 @@
-import { Checkbox, Input, Textarea } from '@/components/atoms';
+import { Checkbox, Input, Select, SelectOption, Textarea } from '@/components/atoms';
 import { PLAQAD_PRODUCT_OPTIONS } from '@/constants/plaqad';
 import { Metadata } from '@/models';
 import { applyPlanWebsiteSettings, planWebsiteSettingsFromMetadata, PlanWebsiteSettings } from '@/lib/planWebsiteSettings';
@@ -7,6 +7,29 @@ interface WebsitePublishingSectionProps {
 	metadata?: Metadata;
 	onChange: (metadata: Metadata) => void;
 }
+
+const CTA_ACTION_OPTIONS: SelectOption[] = [
+	{
+		value: 'auto',
+		label: 'Automatic (recommended)',
+		description: 'Use Subscribe now for a recurring fixed price; otherwise use Talk to sales.',
+	},
+	{
+		value: 'subscribe',
+		label: 'Subscribe now',
+		description: 'Send the buyer to Plaqad Account to choose a workspace and pay securely.',
+	},
+	{
+		value: 'sales',
+		label: 'Talk to sales',
+		description: 'Send the buyer to the Plaqad contact page.',
+	},
+	{
+		value: 'custom',
+		label: 'Custom website link',
+		description: 'Use a specific page on the Plaqad website.',
+	},
+];
 
 const WebsitePublishingSection = ({ metadata = {}, onChange }: WebsitePublishingSectionProps) => {
 	const settings = planWebsiteSettingsFromMetadata(metadata);
@@ -104,19 +127,29 @@ const WebsitePublishingSection = ({ metadata = {}, onChange }: WebsitePublishing
 					/>
 
 					<div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+						<Select
+							label='Button action'
+							description='Choose the website behavior without entering a route.'
+							options={CTA_ACTION_OPTIONS}
+							value={settings.ctaAction}
+							onChange={(ctaAction) => update({ ctaAction: ctaAction as PlanWebsiteSettings['ctaAction'] })}
+						/>
 						<Input
 							label='Button label'
-							placeholder='Talk to sales'
+							description='Optional. The selected action supplies a default label.'
+							placeholder={settings.ctaAction === 'subscribe' ? 'Subscribe now' : 'Talk to sales'}
 							value={settings.ctaLabel}
 							onChange={(ctaLabel) => update({ ctaLabel })}
 						/>
-						<Input
-							label='Button path'
-							description='Use a website path beginning with /.'
-							placeholder='/contact'
-							value={settings.ctaHref}
-							onChange={(ctaHref) => update({ ctaHref })}
-						/>
+						{settings.ctaAction === 'custom' ? (
+							<Input
+								label='Custom website path'
+								description='Use a Plaqad website path beginning with /.'
+								placeholder='/contact'
+								value={settings.ctaHref}
+								onChange={(ctaHref) => update({ ctaHref })}
+							/>
+						) : null}
 					</div>
 
 					<Checkbox
