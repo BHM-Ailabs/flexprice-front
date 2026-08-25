@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Page, Select } from '@/components/atoms';
+import { RedirectCell, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/molecules';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import { RedirectCell, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/molecules';
-import { getCurrencySymbol } from '@/utils';
-import { cn } from '@/lib/utils';
+import InvoiceApi from '@/api/InvoiceApi';
 import RevenueDashboardApi from '@/api/RevenueDashboardApi';
 import { RouteNames } from '@/core/routes/Routes';
-import type { RevenueDashboardGraphPoint } from '@/types/dto/RevenueDashboard';
+import { INVOICE_STATUS, type Invoice } from '@/models/Invoice';
+import { SortDirection } from '@/types/common/QueryBuilder';
+import type { RevenueDashboardSummary } from '@/types/dto/RevenueDashboard';
+import { buildInvoiceCollectionSummaries, formatRevenueCurrency, type InvoiceCollectionSummary } from '@/lib/revenueDashboard';
+import { cn } from '@/lib/utils';
 
 type RevenueFilterValue = 'this_month' | 'this_quarter' | 'this_year' | 'last_month' | 'last_quarter' | 'last_year';
 
@@ -25,49 +26,33 @@ const FILTER_OPTIONS = [
 	{ value: 'last_year', label: 'Last year' },
 ] satisfies { value: RevenueFilterValue; label: string }[];
 
+const CUSTOMER_PAGE_SIZE = 20;
+const INVOICE_PAGE_SIZE = 10;
+
 const getDateRangeForPeriod = (period: RevenueFilterValue) => {
 	const now = new Date();
-	const y = now.getUTCFullYear();
-	const m = now.getUTCMonth();
-
-	// 1st of the given month at 00:00:00.000Z
-	const utc1st = (year: number, month: number) => new Date(Date.UTC(year, month, 1));
+	const year = now.getUTCFullYear();
+	const month = now.getUTCMonth();
+	const utcMonth = (targetYear: number, targetMonth: number) => new Date(Date.UTC(targetYear, targetMonth, 1));
 
 	switch (period) {
 		case 'this_month':
-			return { start: utc1st(y, m), end: utc1st(y, m + 1) };
+			return { start: utcMonth(year, month), end: utcMonth(year, month + 1) };
 		case 'last_month':
-			return { start: utc1st(y, m - 1), end: utc1st(y, m) };
+			return { start: utcMonth(year, month - 1), end: utcMonth(year, month) };
 		case 'this_quarter': {
-			const qStart = Math.floor(m / 3) * 3;
-			return { start: utc1st(y, qStart), end: utc1st(y, qStart + 3) };
+			const quarterStart = Math.floor(month / 3) * 3;
+			return { start: utcMonth(year, quarterStart), end: utcMonth(year, quarterStart + 3) };
 		}
 		case 'last_quarter': {
-			const qStart = Math.floor(m / 3) * 3;
-			return { start: utc1st(y, qStart - 3), end: utc1st(y, qStart) };
+			const quarterStart = Math.floor(month / 3) * 3;
+			return { start: utcMonth(year, quarterStart - 3), end: utcMonth(year, quarterStart) };
 		}
 		case 'this_year':
-			return { start: utc1st(y, 0), end: utc1st(y + 1, 0) };
+			return { start: utcMonth(year, 0), end: utcMonth(year + 1, 0) };
 		case 'last_year':
-			return { start: utc1st(y - 1, 0), end: utc1st(y, 0) };
-		default:
-			return { start: utc1st(y, m), end: utc1st(y, m + 1) };
+			return { start: utcMonth(year - 1, 0), end: utcMonth(year, 0) };
 	}
-};
-
-const formatCurrency = (value: number | null, currency: string) => {
-	if (value == null) return 'N/A';
-	return `${getCurrencySymbol(currency)} ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-};
-
-const formatDecimal = (value: number | null) => {
-	if (value == null) return 'N/A';
-	return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-};
-
-const formatInteger = (value: number | null) => {
-	if (value == null) return 'N/A';
-	return value.toLocaleString();
 };
 
 const toNumberOrNull = (value: unknown): number | null => {
@@ -76,323 +61,347 @@ const toNumberOrNull = (value: unknown): number | null => {
 	return Number.isFinite(numeric) ? numeric : null;
 };
 
-const GRAPH_ELIGIBLE: RevenueFilterValue[] = ['this_quarter', 'last_quarter', 'this_year', 'last_year'];
-const PAGE_SIZE = 20;
+const formatDate = (value: string | undefined): string => {
+	if (!value) return '--';
+	return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const paymentLabel = (invoice: Invoice, now: Date): string => {
+	if (Number(invoice.amount_remaining ?? 0) <= 0 && Number(invoice.amount_due ?? 0) > 0) return 'Paid';
+	if (invoice.due_date && new Date(invoice.due_date) < now) return 'Overdue';
+	const normalized = String(invoice.payment_status || 'pending').toLowerCase();
+	return normalized.charAt(0).toUpperCase() + normalized.slice(1).replace(/_/g, ' ');
+};
+
+interface CurrencyRow {
+	currency: string;
+	recognized: number | null;
+	contract: number | null;
+	usage: number | null;
+	collection: InvoiceCollectionSummary | null;
+}
 
 const Revenue = () => {
 	const [selectedFilter, setSelectedFilter] = useState<RevenueFilterValue>('this_quarter');
-	const [currentPage, setCurrentPage] = useState(1);
-	const [search, setSearch] = useState('');
+	const [customerPage, setCustomerPage] = useState(1);
+	const [invoicePage, setInvoicePage] = useState(1);
+	const [customerSearch, setCustomerSearch] = useState('');
+	const [invoiceSearch, setInvoiceSearch] = useState('');
 	const { start, end } = useMemo(() => getDateRangeForPeriod(selectedFilter), [selectedFilter]);
+	const startIso = start.toISOString();
+	const endIso = end.toISOString();
+	const inclusiveEndIso = new Date(end.getTime() - 1).toISOString();
 
-	const showGraph = GRAPH_ELIGIBLE.includes(selectedFilter);
-	const window_size: 'MONTH' | undefined = showGraph ? 'MONTH' : undefined;
-
-	const handleFilterChange = (value: RevenueFilterValue) => {
-		setSelectedFilter(value);
-		setCurrentPage(1);
-		setSearch('');
-	};
-
-	const handleSearch = (value: string) => {
-		setSearch(value);
-		setCurrentPage(1);
-	};
-
-	const { data, isLoading } = useQuery({
-		queryKey: ['revenue-dashboard', selectedFilter],
-		queryFn: async () => {
-			return await RevenueDashboardApi.getRevenueDashboard({
-				period_start: start.toISOString(),
-				period_end: end.toISOString(),
+	const revenueQuery = useQuery({
+		queryKey: ['revenue-dashboard', selectedFilter, startIso, endIso],
+		queryFn: () =>
+			RevenueDashboardApi.getRevenueDashboard({
+				period_start: startIso,
+				period_end: endIso,
 				customer_ids: [],
-				window_size,
-			});
-		},
+			}),
 	});
 
-	const summary = data?.summary;
-	const items = data?.items ?? [];
-	const filteredItems = search.trim()
-		? items.filter((row) => (row.customer_name || row.external_customer_id || '').toLowerCase().includes(search.trim().toLowerCase()))
-		: items;
-	const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
-	const pagedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-	const hasRows = items.length > 0;
-	const hasAnyMetricData = [
-		toNumberOrNull(summary?.total_revenue),
-		toNumberOrNull(summary?.total_fixed_revenue),
-		toNumberOrNull(summary?.total_usage_revenue),
-		toNumberOrNull(summary?.voice_minutes),
-		toNumberOrNull(summary?.cpm),
-	].some((value) => Number(value ?? 0) > 0);
-	const showGlobalEmpty = !isLoading && !hasRows && !hasAnyMetricData;
+	const invoiceQuery = useQuery({
+		queryKey: ['revenue-invoices', selectedFilter, startIso, inclusiveEndIso],
+		queryFn: () =>
+			InvoiceApi.listInvoices({
+				limit: 1000,
+				offset: 0,
+				invoice_status: [INVOICE_STATUS.FINALIZED],
+				period_start_gte: startIso,
+				period_start_lte: inclusiveEndIso,
+				skip_line_items: true,
+				sort: [{ field: 'created_at', direction: SortDirection.DESC }],
+			}),
+	});
 
-	const normalizedSummary = {
-		netRevenue: toNumberOrNull(summary?.total_revenue),
-		fixedContractRevenue: toNumberOrNull(summary?.total_fixed_revenue),
-		usageRevenue: toNumberOrNull(summary?.total_usage_revenue),
-		totalMinutes: toNumberOrNull(summary?.voice_minutes),
-		cpm: toNumberOrNull(summary?.cpm),
-		currency: 'usd',
+	const summaries = useMemo(() => revenueQuery.data?.summaries ?? {}, [revenueQuery.data?.summaries]);
+	const customers = revenueQuery.data?.items ?? [];
+	const invoices = useMemo(() => invoiceQuery.data?.items ?? [], [invoiceQuery.data?.items]);
+	const collectionSummaries = useMemo(() => buildInvoiceCollectionSummaries(invoices), [invoices]);
+	const collectionByCurrency = useMemo(
+		() => new Map(collectionSummaries.map((summary) => [summary.currency, summary])),
+		[collectionSummaries],
+	);
+	const currencyRows = useMemo<CurrencyRow[]>(() => {
+		const currencies = new Set([...Object.keys(summaries), ...collectionSummaries.map((summary) => summary.currency)]);
+		return [...currencies]
+			.sort((left, right) => left.localeCompare(right))
+			.map((currency) => {
+				const summary: RevenueDashboardSummary | undefined = summaries[currency];
+				return {
+					currency,
+					recognized: toNumberOrNull(summary?.total_revenue),
+					contract: toNumberOrNull(summary?.total_fixed_revenue),
+					usage: toNumberOrNull(summary?.total_usage_revenue),
+					collection: collectionByCurrency.get(currency) ?? null,
+				};
+			});
+	}, [collectionByCurrency, collectionSummaries, summaries]);
+
+	const filteredCustomers = customerSearch.trim()
+		? customers.filter((row) =>
+				(row.customer_name || row.external_customer_id || '').toLowerCase().includes(customerSearch.trim().toLowerCase()),
+			)
+		: customers;
+	const customerPages = Math.max(1, Math.ceil(filteredCustomers.length / CUSTOMER_PAGE_SIZE));
+	const pagedCustomers = filteredCustomers.slice((customerPage - 1) * CUSTOMER_PAGE_SIZE, customerPage * CUSTOMER_PAGE_SIZE);
+
+	const filteredInvoices = invoiceSearch.trim()
+		? invoices.filter((invoice) => {
+				const query = invoiceSearch.trim().toLowerCase();
+				return [invoice.invoice_number, invoice.customer?.name, invoice.customer_id].some((value) =>
+					String(value ?? '')
+						.toLowerCase()
+						.includes(query),
+				);
+			})
+		: invoices;
+	const invoicePages = Math.max(1, Math.ceil(filteredInvoices.length / INVOICE_PAGE_SIZE));
+	const pagedInvoices = filteredInvoices.slice((invoicePage - 1) * INVOICE_PAGE_SIZE, invoicePage * INVOICE_PAGE_SIZE);
+	const loading = revenueQuery.isLoading || invoiceQuery.isLoading;
+	const hasError = revenueQuery.isError || invoiceQuery.isError;
+	const hasData = currencyRows.length > 0 || customers.length > 0 || invoices.length > 0;
+	const now = new Date();
+
+	const changePeriod = (value: RevenueFilterValue) => {
+		setSelectedFilter(value);
+		setCustomerPage(1);
+		setInvoicePage(1);
+		setCustomerSearch('');
+		setInvoiceSearch('');
 	};
-
-	const graph = data?.graph;
-	const graphCharts: { key: 'total_revenue' | 'voice_minutes'; title: string; type: 'currency' | 'minutes' }[] = [];
-	if (showGraph && graph) {
-		if ((graph.total_revenue ?? []).length > 0) {
-			graphCharts.push({ key: 'total_revenue', title: 'Net Revenue', type: 'currency' });
-		}
-		if ((graph.voice_minutes ?? []).length > 0) {
-			graphCharts.push({ key: 'voice_minutes', title: 'Voice Minutes', type: 'minutes' });
-		}
-	}
 
 	return (
 		<Page
 			heading='Revenue'
 			headingCTA={
 				<div className='w-[220px]'>
-					<Select options={FILTER_OPTIONS} value={selectedFilter} onChange={(value) => handleFilterChange(value as RevenueFilterValue)} />
+					<Select options={FILTER_OPTIONS} value={selectedFilter} onChange={(value) => changePeriod(value as RevenueFilterValue)} />
 				</div>
 			}>
-			<div className='space-y-6 pt-3'>
-				<div className='relative'>
-					<div className={showGlobalEmpty ? 'blur-[3px] select-none pointer-events-none' : ''}>
-						<div className='rounded-xl border border-gray-200 bg-white overflow-hidden'>
-							<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5'>
-								<MetricTile
-									title='Net Revenue'
-									value={formatCurrency(normalizedSummary.netRevenue, normalizedSummary.currency)}
-									loading={isLoading}
-								/>
-								<MetricTile
-									title='Contract Revenue'
-									value={formatCurrency(normalizedSummary.fixedContractRevenue, normalizedSummary.currency)}
-									loading={isLoading}
-								/>
-								<MetricTile
-									title='Usage Revenue'
-									value={formatCurrency(normalizedSummary.usageRevenue, normalizedSummary.currency)}
-									loading={isLoading}
-								/>
-								<MetricTile title='Voice Minutes' value={formatInteger(normalizedSummary.totalMinutes)} loading={isLoading} />
-								<MetricTile title='Cost / Minute' value={formatDecimal(normalizedSummary.cpm)} loading={isLoading} isLast />
-							</div>
-						</div>
-					</div>
-
-					{showGlobalEmpty && (
-						<div className='absolute inset-0 flex items-center justify-center rounded-lg backdrop-blur-md bg-white/45'>
-							<div className='text-center max-w-sm px-4'>
-								<h3 className='text-xl font-semibold text-zinc-900'>This range is empty</h3>
-								<p className='text-sm text-zinc-600 mt-2'>
-									Not enough revenue data is available in the selected range to show this statistics.
-								</p>
-								<Button onClick={() => setSelectedFilter('this_quarter')} className='mt-4'>
-									View latest data
-								</Button>
-							</div>
-						</div>
-					)}
+			<div className='space-y-8 pt-3'>
+				<div className='flex flex-wrap items-center justify-between gap-3'>
+					<p className='text-sm text-zinc-500'>Recognized revenue and invoice collection, kept separate by currency.</p>
+					<p className='text-xs text-zinc-400'>
+						{formatDate(startIso)} – {formatDate(inclusiveEndIso)}
+					</p>
 				</div>
 
-				{showGraph && (isLoading || graphCharts.length > 0) && (
-					<div className='pt-2'>
-						<div className={`grid grid-cols-1 gap-4 ${graphCharts.length === 1 ? 'md:grid-cols-1' : 'md:grid-cols-2'}`}>
-							{isLoading
-								? [0, 1].map((i) => (
-										<Card key={i} className='shadow-sm border border-gray-200'>
-											<CardHeader className='pb-2'>
-												<Skeleton className='h-4 w-32' />
-											</CardHeader>
-											<CardContent>
-												<Skeleton className='h-56 w-full' />
-											</CardContent>
-										</Card>
-									))
-								: graphCharts.map((chart) => (
-										<RevenueBarChart key={chart.key} title={chart.title} data={graph![chart.key]!} type={chart.type} />
-									))}
-						</div>
+				{hasError && (
+					<div className='rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900'>
+						Some revenue data could not be loaded. Retry this page before making a collection decision.
 					</div>
 				)}
 
-				<div className='pt-8'>
-					<div className='rounded-md border border-gray-200 bg-white overflow-hidden shadow-sm'>
-						<div className='flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-white'>
-							<div className='relative flex items-center w-64'>
-								<Search className='absolute left-2.5 h-3.5 w-3.5 text-gray-400 pointer-events-none' />
-								<Input
-									placeholder='Search customers...'
-									value={search}
-									onChange={(e) => handleSearch(e.target.value)}
-									className='pl-8 h-8 text-[13px] border-gray-200 bg-gray-50 focus:bg-white placeholder:text-gray-400'
-								/>
-							</div>
-							<div className='flex items-center gap-4'>
-								{search.trim() && (
-									<p className='text-[12px] text-gray-400'>
-										{filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}
-									</p>
-								)}
-								<p className='text-[12px] text-gray-400'>
-									{start.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
-									{' – '}
-									{end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
-								</p>
-							</div>
-						</div>
+				<section className='space-y-3'>
+					<SectionHeading title='Revenue by currency' detail='No automatic FX conversion is applied' />
+					<div className='overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm'>
 						<Table>
-							<TableHeader className='h-10 bg-gray-50 border-b border-gray-200 rounded-t-md'>
-								<TableRow className='rounded-t-md border-b border-gray-200'>
-									<TableHead className='rounded-tl-md pl-4 font-semibold text-gray-700 text-[13px]'>Customer</TableHead>
-									<TableHead className='font-semibold text-gray-700 text-[13px]'>Net Revenue</TableHead>
-									<TableHead className='font-semibold text-gray-700 text-[13px]'>Contract Revenue</TableHead>
-									<TableHead className='font-semibold text-gray-700 text-[13px]'>Usage Revenue</TableHead>
-									<TableHead className='font-semibold text-gray-700 text-[13px]'>Voice Minutes</TableHead>
-									<TableHead className='rounded-tr-md font-semibold text-gray-700 text-[13px]'>Cost / Minute</TableHead>
+							<TableHeader className='bg-gray-50'>
+								<TableRow>
+									<TableHead className='pl-4'>Currency</TableHead>
+									<TableHead>Recognized</TableHead>
+									<TableHead>Contract</TableHead>
+									<TableHead>Usage</TableHead>
+									<TableHead>Invoiced</TableHead>
+									<TableHead>Collected</TableHead>
+									<TableHead>Outstanding</TableHead>
+									<TableHead>Overdue</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{pagedItems.map((row) => (
-									<TableRow
-										key={`${row.customer_id}:${row.external_customer_id}`}
-										className='h-10 align-middle border-b border-gray-200 bg-white hover:bg-gray-50/50 transition-colors'>
-										<TableCell className='py-2.5 pl-4 font-normal text-gray-700 text-[13px] align-middle'>
-											<RedirectCell redirectUrl={`${RouteNames.customers}/${row.customer_id}`} allowRedirect={Boolean(row.customer_id)}>
-												{row.customer_name || row.external_customer_id || 'Unknown'}
-											</RedirectCell>
+								{loading && currencyRows.length === 0 ? (
+									<TableRow>
+										<TableCell colSpan={8} className='p-4'>
+											<Skeleton className='h-8 w-full' />
 										</TableCell>
-										<TableCell className='py-2.5 font-semibold text-gray-700 text-[13px]'>
-											{formatCurrency(
-												toNumberOrNull(row.total_revenue) ??
-													(toNumberOrNull(row.total_usage_revenue) ?? 0) + (toNumberOrNull(row.total_fixed_revenue) ?? 0),
-												normalizedSummary.currency,
-											)}
-										</TableCell>
-										<TableCell className='py-2.5 font-normal text-gray-600 text-[13px]'>
-											{formatCurrency(toNumberOrNull(row.total_fixed_revenue), normalizedSummary.currency)}
-										</TableCell>
-										<TableCell className='py-2.5 font-normal text-gray-600 text-[13px]'>
-											{formatCurrency(toNumberOrNull(row.total_usage_revenue), normalizedSummary.currency)}
-										</TableCell>
-										<TableCell className='py-2.5 font-normal text-gray-600 text-[13px]'>
-											{formatInteger(toNumberOrNull(row.voice_minutes))}
-										</TableCell>
-										<TableCell className='py-2.5 font-normal text-gray-600 text-[13px]'>{formatDecimal(toNumberOrNull(row.cpm))}</TableCell>
 									</TableRow>
-								))}
-								{pagedItems.length === 0 && (
-									<TableRow className='bg-white'>
-										<TableCell colSpan={6} className='pl-4 py-4 font-normal text-gray-500 text-[13px]'>
-											{search.trim() ? 'No customers match your search.' : '--'}
+								) : (
+									currencyRows.map((row) => (
+										<TableRow key={row.currency}>
+											<TableCell className='pl-4 font-semibold uppercase'>{row.currency}</TableCell>
+											<TableCell>{formatRevenueCurrency(row.recognized, row.currency)}</TableCell>
+											<TableCell>{formatRevenueCurrency(row.contract, row.currency)}</TableCell>
+											<TableCell>{formatRevenueCurrency(row.usage, row.currency)}</TableCell>
+											<TableCell>{formatRevenueCurrency(row.collection?.invoiced ?? null, row.currency)}</TableCell>
+											<TableCell className='font-medium text-emerald-700'>
+												{formatRevenueCurrency(row.collection?.collected ?? null, row.currency)}
+											</TableCell>
+											<TableCell>{formatRevenueCurrency(row.collection?.outstanding ?? null, row.currency)}</TableCell>
+											<TableCell className={cn((row.collection?.overdue ?? 0) > 0 && 'font-medium text-amber-700')}>
+												{formatRevenueCurrency(row.collection?.overdue ?? null, row.currency)}
+											</TableCell>
+										</TableRow>
+									))
+								)}
+								{!loading && currencyRows.length === 0 && (
+									<TableRow>
+										<TableCell colSpan={8} className='py-8 text-center text-sm text-zinc-500'>
+											No finalized revenue is available in this period.
 										</TableCell>
 									</TableRow>
 								)}
 							</TableBody>
 						</Table>
 					</div>
-					{filteredItems.length > 0 && totalPages > 1 && (
-						<div className='flex items-center justify-between py-4'>
-							<p className='text-sm text-gray-500 font-light'>
-								Showing <span className='font-normal'>{(currentPage - 1) * PAGE_SIZE + 1}</span> to{' '}
-								<span className='font-normal'>{Math.min(currentPage * PAGE_SIZE, filteredItems.length)}</span> of{' '}
-								<span className='font-normal'>{filteredItems.length}</span> Customers
-							</p>
-							<div className='flex items-center space-x-2'>
-								<Button
-									type='button'
-									variant='outline'
-									size='icon'
-									onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-									disabled={currentPage === 1}
-									className={cn('size-8', currentPage === 1 && 'text-gray-300 cursor-not-allowed')}>
-									<ChevronLeft className='h-4 w-4' />
-								</Button>
-								<Button
-									type='button'
-									variant='outline'
-									size='icon'
-									onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-									disabled={currentPage === totalPages}
-									className={cn('size-8', currentPage === totalPages && 'text-gray-300 cursor-not-allowed')}>
-									<ChevronRight className='h-4 w-4' />
-								</Button>
-							</div>
-						</div>
-					)}
-				</div>
+				</section>
+
+				<section className='space-y-3'>
+					<SectionHeading title='Invoice collection' detail={`${invoices.length} finalized invoice${invoices.length === 1 ? '' : 's'}`} />
+					<SearchBar
+						value={invoiceSearch}
+						placeholder='Search invoice or customer...'
+						onChange={(value) => {
+							setInvoiceSearch(value);
+							setInvoicePage(1);
+						}}
+					/>
+					<div className='overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm'>
+						<Table>
+							<TableHeader className='bg-gray-50'>
+								<TableRow>
+									<TableHead className='pl-4'>Issued</TableHead>
+									<TableHead>Customer</TableHead>
+									<TableHead>Invoice</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead>Due</TableHead>
+									<TableHead>Invoiced</TableHead>
+									<TableHead>Collected</TableHead>
+									<TableHead>Outstanding</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{pagedInvoices.map((invoice) => {
+									const overdue = paymentLabel(invoice, now) === 'Overdue';
+									return (
+										<TableRow key={invoice.id}>
+											<TableCell className='pl-4'>{formatDate(invoice.finalized_at || invoice.created_at)}</TableCell>
+											<TableCell>{invoice.customer?.name || invoice.customer_id || '--'}</TableCell>
+											<TableCell>
+												<RedirectCell redirectUrl={`${RouteNames.invoices}/${invoice.id}`}>
+													{invoice.invoice_number || invoice.id}
+												</RedirectCell>
+											</TableCell>
+											<TableCell className={cn(overdue ? 'font-medium text-amber-700' : 'text-zinc-600')}>
+												{paymentLabel(invoice, now)}
+											</TableCell>
+											<TableCell>{formatDate(invoice.due_date)}</TableCell>
+											<TableCell>{formatRevenueCurrency(Number(invoice.amount_due ?? 0), invoice.currency)}</TableCell>
+											<TableCell>{formatRevenueCurrency(Number(invoice.amount_paid ?? 0), invoice.currency)}</TableCell>
+											<TableCell>{formatRevenueCurrency(Number(invoice.amount_remaining ?? 0), invoice.currency)}</TableCell>
+										</TableRow>
+									);
+								})}
+								{!invoiceQuery.isLoading && pagedInvoices.length === 0 && (
+									<TableRow>
+										<TableCell colSpan={8} className='py-8 text-center text-sm text-zinc-500'>
+											{invoiceSearch.trim() ? 'No invoices match this search.' : 'No finalized invoices in this period.'}
+										</TableCell>
+									</TableRow>
+								)}
+							</TableBody>
+						</Table>
+					</div>
+					<Pagination page={invoicePage} pages={invoicePages} onChange={setInvoicePage} />
+				</section>
+
+				<section className='space-y-3'>
+					<SectionHeading
+						title='Customer revenue'
+						detail={`${customers.length} customer-currency record${customers.length === 1 ? '' : 's'}`}
+					/>
+					<SearchBar
+						value={customerSearch}
+						placeholder='Search customers...'
+						onChange={(value) => {
+							setCustomerSearch(value);
+							setCustomerPage(1);
+						}}
+					/>
+					<div className='overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm'>
+						<Table>
+							<TableHeader className='bg-gray-50'>
+								<TableRow>
+									<TableHead className='pl-4'>Customer</TableHead>
+									<TableHead>Currency</TableHead>
+									<TableHead>Recognized</TableHead>
+									<TableHead>Contract</TableHead>
+									<TableHead>Usage</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{pagedCustomers.map((row) => (
+									<TableRow key={`${row.customer_id}:${row.currency}`}>
+										<TableCell className='pl-4'>
+											<RedirectCell redirectUrl={`${RouteNames.customers}/${row.customer_id}`} allowRedirect={Boolean(row.customer_id)}>
+												{row.customer_name || row.external_customer_id || 'Unknown'}
+											</RedirectCell>
+										</TableCell>
+										<TableCell className='uppercase'>{row.currency}</TableCell>
+										<TableCell className='font-medium'>{formatRevenueCurrency(toNumberOrNull(row.total_revenue), row.currency)}</TableCell>
+										<TableCell>{formatRevenueCurrency(toNumberOrNull(row.total_fixed_revenue), row.currency)}</TableCell>
+										<TableCell>{formatRevenueCurrency(toNumberOrNull(row.total_usage_revenue), row.currency)}</TableCell>
+									</TableRow>
+								))}
+								{!revenueQuery.isLoading && pagedCustomers.length === 0 && (
+									<TableRow>
+										<TableCell colSpan={5} className='py-8 text-center text-sm text-zinc-500'>
+											{customerSearch.trim() ? 'No customers match this search.' : '--'}
+										</TableCell>
+									</TableRow>
+								)}
+							</TableBody>
+						</Table>
+					</div>
+					<Pagination page={customerPage} pages={customerPages} onChange={setCustomerPage} />
+				</section>
+
+				{!loading && !hasError && !hasData && (
+					<div className='rounded-md border border-dashed border-gray-300 bg-white px-6 py-12 text-center'>
+						<h2 className='text-lg font-semibold text-zinc-900'>No revenue in this range</h2>
+						<p className='mt-2 text-sm text-zinc-500'>Choose another reporting period or finalize an invoice to populate this dashboard.</p>
+					</div>
+				)}
 			</div>
 		</Page>
 	);
 };
 
-const MetricTile = ({
-	title,
-	value,
-	loading = false,
-	isLast = false,
-}: {
-	title: string;
-	value: string;
-	loading?: boolean;
-	isLast?: boolean;
-}) => {
+const SectionHeading = ({ title, detail }: { title: string; detail: string }) => (
+	<div className='flex flex-wrap items-end justify-between gap-2'>
+		<h2 className='text-base font-semibold text-zinc-900'>{title}</h2>
+		<p className='text-xs text-zinc-400'>{detail}</p>
+	</div>
+);
+
+const SearchBar = ({ value, placeholder, onChange }: { value: string; placeholder: string; onChange: (value: string) => void }) => (
+	<div className='relative w-full max-w-xs'>
+		<Search className='pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400' />
+		<Input
+			value={value}
+			onChange={(event) => onChange(event.target.value)}
+			placeholder={placeholder}
+			className='h-8 bg-white pl-8 text-[13px]'
+		/>
+	</div>
+);
+
+const Pagination = ({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) => {
+	if (pages <= 1) return null;
 	return (
-		<div
-			className={`px-5 py-4 min-h-[104px] flex flex-col ${!isLast ? 'lg:border-r lg:border-gray-200' : ''} border-b sm:border-b-0 border-gray-200`}>
-			<p className='text-[12px] leading-4 text-zinc-600 whitespace-normal break-words'>{title}</p>
-			<p className='mt-4 text-[22px] leading-[1.2] font-medium text-zinc-900'>{loading ? '...' : value}</p>
+		<div className='flex items-center justify-end gap-2 pt-1'>
+			<span className='text-xs text-zinc-400'>
+				Page {page} of {pages}
+			</span>
+			<Button type='button' variant='outline' size='icon' className='size-8' disabled={page === 1} onClick={() => onChange(page - 1)}>
+				<ChevronLeft className='h-4 w-4' />
+			</Button>
+			<Button type='button' variant='outline' size='icon' className='size-8' disabled={page === pages} onClick={() => onChange(page + 1)}>
+				<ChevronRight className='h-4 w-4' />
+			</Button>
 		</div>
-	);
-};
-
-const RevenueBarChart = ({ title, data, type }: { title: string; data: RevenueDashboardGraphPoint[]; type: 'currency' | 'minutes' }) => {
-	const chartData = data.map((point) => ({
-		label: point.label,
-		value: toNumberOrNull(point.value) ?? 0,
-	}));
-
-	const formatYAxis = (val: number) => {
-		if (type === 'currency') {
-			if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
-			if (val >= 1_000) return `$${(val / 1_000).toFixed(0)}K`;
-			return `$${val.toLocaleString()}`;
-		}
-		if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
-		if (val >= 1_000) return `${(val / 1_000).toFixed(0)}K`;
-		return val.toLocaleString(undefined, { maximumFractionDigits: 0 });
-	};
-
-	const formatTooltip = (val: number) => {
-		if (type === 'currency') {
-			return [`$ ${val.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, title];
-		}
-		return [val.toLocaleString(undefined, { maximumFractionDigits: 2 }), title];
-	};
-
-	return (
-		<Card className='shadow-sm border border-gray-200 bg-white'>
-			<CardHeader className='pb-2 pt-5 px-5'>
-				<CardTitle className='text-sm font-medium text-zinc-600'>{title}</CardTitle>
-			</CardHeader>
-			<CardContent className='px-5 pb-5'>
-				<ResponsiveContainer width='100%' height={220}>
-					<BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-						<CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' vertical={false} />
-						<XAxis dataKey='label' tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickMargin={8} />
-						<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={formatYAxis} width={64} />
-						<Tooltip
-							cursor={false}
-							formatter={formatTooltip}
-							contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: 13 }}
-						/>
-						<Bar dataKey='value' fill='#22c55e' radius={[4, 4, 0, 0]} maxBarSize={48} />
-					</BarChart>
-				</ResponsiveContainer>
-			</CardContent>
-		</Card>
 	);
 };
 

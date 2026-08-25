@@ -17,6 +17,7 @@ export interface RevenueDashboardItem {
 	customer_id: string;
 	external_customer_id: string;
 	customer_name: string;
+	currency: string;
 	total_revenue?: number | string | null;
 	total_usage_revenue: number | string | null;
 	total_fixed_revenue: number | string | null;
@@ -35,7 +36,7 @@ export interface RevenueDashboardGraph {
 }
 
 export interface RevenueDashboardResponse {
-	summary: RevenueDashboardSummary;
+	summaries: Record<string, RevenueDashboardSummary>;
 	items: RevenueDashboardItem[];
 	graph?: RevenueDashboardGraph | null;
 }
