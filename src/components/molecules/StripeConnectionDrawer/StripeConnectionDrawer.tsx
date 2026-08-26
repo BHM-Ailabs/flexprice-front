@@ -6,6 +6,7 @@ import { useEnvironment } from '@/hooks/useEnvironment';
 import { useMutation } from '@tanstack/react-query';
 import ConnectionApi from '@/api/ConnectionApi';
 import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '@/core/axios/types';
 import { Copy, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import {
 	StripeWebhookEvents,
@@ -14,32 +15,36 @@ import {
 	getSubscriptionWebhookEvents,
 	getInvoiceWebhookEvents,
 } from '@/types';
-import { CONNECTION_PROVIDER_TYPE } from '@/models';
+import {
+	buildStripeConnectionCreatePayload,
+	expectedStripeMode,
+	StripeConnectionFormData,
+	validateStripeConnectionForm,
+} from '@/lib/stripeConnectionForm';
+import { Connection } from '@/models';
+
+interface StripeConnectionEditValue extends Connection {
+	sync_config?: {
+		plan?: { inbound?: boolean };
+		subscription?: { inbound?: boolean };
+		invoice?: { outbound?: boolean };
+	};
+}
 
 interface StripeConnectionDrawerProps {
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
-	connection?: any; // for editing
-	onSave: (connection: any) => void;
-}
-
-interface StripeFormData {
-	name: string;
-	secret_key: string;
-	webhook_secret: string;
-	sync_config: {
-		plan: boolean; // pull from Stripe
-		subscription: boolean; // pull from Stripe
-		invoice: boolean; // push to Stripe
-	};
+	connection?: StripeConnectionEditValue | null;
+	onSave: (connection: Connection) => void;
 }
 
 const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpenChange, connection, onSave }) => {
 	const { user } = useUser();
 	const { activeEnvironment } = useEnvironment();
 
-	const [formData, setFormData] = useState<StripeFormData>({
+	const [formData, setFormData] = useState<StripeConnectionFormData>({
 		name: '',
+		publishable_key: '',
 		secret_key: '',
 		webhook_secret: '',
 		sync_config: {
@@ -55,6 +60,7 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 	// Generate webhook URL using environment variable
 	const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/v1';
 	const webhookUrl = user?.tenant?.id && activeEnvironment?.id ? `${apiUrl}/webhooks/stripe/${user.tenant.id}/${activeEnvironment.id}` : '';
+	const stripeMode = expectedStripeMode(activeEnvironment?.type);
 
 	// Webhook events mapping based on sync config
 	const getWebhookEvents = (): StripeWebhookEvents[] => {
@@ -95,13 +101,15 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 
 				setFormData({
 					name: connection.name || '',
-					secret_key: connection.secret_key || '',
-					webhook_secret: connection.webhook_secret || '',
+					publishable_key: '',
+					secret_key: '',
+					webhook_secret: '',
 					sync_config: newSyncConfig,
 				});
 			} else {
 				setFormData({
 					name: '',
+					publishable_key: '',
 					secret_key: '',
 					webhook_secret: '',
 					sync_config: {
@@ -116,7 +124,7 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 		}
 	}, [isOpen, connection]);
 
-	const handleChange = (field: keyof StripeFormData, value: string) => {
+	const handleChange = (field: keyof StripeConnectionFormData, value: string) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 		setErrors((prev) => ({ ...prev, [field]: '' }));
 	};
@@ -132,21 +140,10 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 	};
 
 	const validateForm = () => {
-		const newErrors: Record<string, string> = {};
-
-		if (!formData.name.trim()) {
-			newErrors.name = 'Connection name is required';
-		}
-
-		// Only validate secrets when creating new connection
-		if (!connection) {
-			if (!formData.secret_key.trim()) {
-				newErrors.secret_key = 'Secret key is required';
-			}
-			if (!formData.webhook_secret.trim()) {
-				newErrors.webhook_secret = 'Webhook secret is required';
-			}
-		}
+		const newErrors = validateStripeConnectionForm(formData, {
+			requireCredentials: !connection,
+			environmentType: activeEnvironment?.type,
+		});
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
@@ -154,44 +151,21 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 
 	const { mutate: createConnection, isPending: isCreating } = useMutation({
 		mutationFn: async () => {
-			const payload = {
-				name: formData.name,
-				provider_type: CONNECTION_PROVIDER_TYPE.STRIPE,
-				encrypted_secret_data: {
-					provider_type: CONNECTION_PROVIDER_TYPE.STRIPE,
-					secret_key: formData.secret_key,
-					webhook_secret: formData.webhook_secret,
-				},
-				sync_config: {
-					plan: {
-						inbound: formData.sync_config.plan,
-						outbound: false,
-					},
-					subscription: {
-						inbound: formData.sync_config.subscription,
-						outbound: false,
-					},
-					invoice: {
-						inbound: false,
-						outbound: formData.sync_config.invoice,
-					},
-				},
-			};
-
-			return await ConnectionApi.Create(payload);
+			return await ConnectionApi.Create(buildStripeConnectionCreatePayload(formData));
 		},
 		onSuccess: (response) => {
 			toast.success('Stripe connection created successfully');
 			onSave(response);
 			onOpenChange(false);
 		},
-		onError: (error: any) => {
-			toast.error(error?.message || 'Failed to create connection');
+		onError: (error: unknown) => {
+			toast.error(getApiErrorMessage(error, 'Failed to create Stripe connection. Check the credentials and try again.'));
 		},
 	});
 
 	const { mutate: updateConnection, isPending: isUpdating } = useMutation({
 		mutationFn: async () => {
+			if (!connection) throw new Error('Stripe connection is required for an update.');
 			const payload = {
 				name: formData.name,
 				sync_config: {
@@ -217,8 +191,8 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 			onSave(response);
 			onOpenChange(false);
 		},
-		onError: (error: any) => {
-			toast.error(error?.message || 'Failed to update connection');
+		onError: (error: unknown) => {
+			toast.error(getApiErrorMessage(error, 'Failed to update Stripe connection. Please try again.'));
 		},
 	});
 
@@ -257,25 +231,47 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 			<div className='space-y-6 mt-9'>
 				{/* Connection Name */}
 				<Input
+					id='stripe-connection-name'
 					label='Connection Name'
-					placeholder='e.g., Production Stripe, Test Stripe'
+					placeholder='e.g., Production Stripe'
 					value={formData.name}
 					onChange={(value) => handleChange('name', value)}
 					error={errors.name}
-					description='A friendly name to identify this Stripe connection'
+					description='A friendly name that identifies the Stripe account and environment.'
 				/>
 
-				{/* Secret Key */}
+				{/* Credentials */}
 				{!connection && (
-					<Input
-						label='Secret Key'
-						placeholder='sk_...'
-						type='password'
-						value={formData.secret_key}
-						onChange={(value) => handleChange('secret_key', value)}
-						error={errors.secret_key}
-						description='Your Stripe secret key from the API keys section'
-					/>
+					<div className='space-y-4 rounded-[6px] border border-gray-200 p-4'>
+						<div>
+							<h3 className='text-sm font-medium text-gray-900'>Stripe API keys</h3>
+							<p className='mt-1 text-xs text-gray-600'>
+								This {activeEnvironment?.type ?? 'selected'} FlexPrice environment requires {stripeMode ? `${stripeMode}-mode` : 'matching'}{' '}
+								keys.
+							</p>
+						</div>
+						<Input
+							id='stripe-publishable-key'
+							label='Publishable key'
+							placeholder={stripeMode === 'live' ? 'pk_live_...' : 'pk_test_...'}
+							value={formData.publishable_key}
+							onChange={(value) => handleChange('publishable_key', value)}
+							error={errors.publishable_key}
+							autoComplete='off'
+							description='Copy the publishable key from Stripe Workbench. Its mode must match the server key below.'
+						/>
+						<Input
+							id='stripe-server-key'
+							label='Restricted or secret key'
+							placeholder={stripeMode === 'live' ? 'rk_live_... or sk_live_...' : 'rk_test_... or sk_test_...'}
+							type='password'
+							value={formData.secret_key}
+							onChange={(value) => handleChange('secret_key', value)}
+							error={errors.secret_key}
+							autoComplete='new-password'
+							description='Prefer a restricted key (rk_) with only the permissions FlexPrice needs. This value is never shown again.'
+						/>
+					</div>
 				)}
 
 				{/* Sync Configuration Section */}
@@ -324,13 +320,15 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 					{!connection && (
 						<div className='mb-4'>
 							<Input
-								label='Webhook Secret'
+								id='stripe-webhook-signing-secret'
+								label='Webhook signing secret'
 								placeholder='whsec_...'
 								type='password'
 								value={formData.webhook_secret}
 								onChange={(value) => handleChange('webhook_secret', value)}
 								error={errors.webhook_secret}
-								description='The webhook secret provided by Stripe after setting up the webhook endpoint'
+								autoComplete='new-password'
+								description='Copy the whsec_ signing secret after creating this endpoint in Stripe. FlexPrice uses it to verify every event.'
 							/>
 						</div>
 					)}

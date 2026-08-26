@@ -22,9 +22,9 @@ export interface CreateConnectionPayload {
 		| {
 				provider_type: CONNECTION_PROVIDER_TYPE.STRIPE;
 				account_id?: string;
-				publishable_key?: string;
-				secret_key?: string;
-				webhook_secret?: string;
+				publishable_key: string;
+				secret_key: string;
+				webhook_secret: string;
 		  }
 		| {
 				provider_type: CONNECTION_PROVIDER_TYPE.RAZORPAY;
@@ -130,7 +130,7 @@ export interface UpdateConnectionPayload {
 				environment?: 'sandbox' | 'production';
 				income_account_id?: string;
 		  }
-		| Record<string, any>;
+		| Record<string, unknown>;
 	sync_config?: {
 		plan?: {
 			inbound: boolean;
