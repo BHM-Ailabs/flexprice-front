@@ -40,9 +40,7 @@ export const getDefaultWebhookEvents = (): StripeWebhookEvents[] => [
 	StripeWebhookEvents.CHECKOUT_SESSION_ASYNC_PAYMENT_SUCCEEDED,
 	StripeWebhookEvents.CHECKOUT_SESSION_ASYNC_PAYMENT_FAILED,
 	StripeWebhookEvents.CHECKOUT_SESSION_EXPIRED,
-	StripeWebhookEvents.CUSTOMER_CREATED,
 	StripeWebhookEvents.PAYMENT_INTENT_PAYMENT_FAILED,
-	StripeWebhookEvents.PAYMENT_INTENT_SUCCEEDED,
 ];
 
 /**
