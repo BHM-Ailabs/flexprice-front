@@ -2,6 +2,8 @@ import { Checkbox, Input, Select, SelectOption, Textarea } from '@/components/at
 import { PLAQAD_PRODUCT_OPTIONS } from '@/constants/plaqad';
 import { Metadata } from '@/models';
 import { applyPlanWebsiteSettings, planWebsiteSettingsFromMetadata, PlanWebsiteSettings } from '@/lib/planWebsiteSettings';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 
 interface WebsitePublishingSectionProps {
 	metadata?: Metadata;
@@ -42,24 +44,57 @@ const WebsitePublishingSection = ({ metadata = {}, onChange }: WebsitePublishing
 	};
 
 	return (
-		<section className='rounded-[6px] border border-gray-300 p-5' aria-labelledby='website-publishing-title'>
+		<section className='rounded-[6px] border border-gray-300 p-5' aria-labelledby='plan-audience-title'>
 			<div className='mb-5'>
-				<h3 id='website-publishing-title' className='text-sm font-semibold text-zinc-950'>
-					Website publishing
+				<h3 id='plan-audience-title' className='text-sm font-semibold text-zinc-950'>
+					Plan audience
 				</h3>
-				<p className='mt-1 text-sm text-zinc-600'>Control where this plan appears without editing metadata keys.</p>
+				<p id='plan-audience-description' className='mt-1 text-sm text-zinc-600'>
+					Choose who can discover this plan. Private plans are ideal for enterprise contracts.
+				</p>
 			</div>
 
-			<Checkbox
-				id='plan-website-public'
-				checked={settings.public}
-				onCheckedChange={(checked) => update({ public: checked })}
-				label='Show this plan on the Plaqad website'
-				description='Publishes the plan on the main pricing page and any selected product pages.'
-			/>
+			<RadioGroup
+				value={settings.public ? 'public' : 'private'}
+				onValueChange={(audience) => update({ public: audience === 'public' })}
+				aria-describedby='plan-audience-description'
+				className='grid gap-3 sm:grid-cols-2'>
+				{[
+					{
+						value: 'private',
+						label: 'Private enterprise plan',
+						description: 'Hidden from the website. Customers access it through their enterprise contract link.',
+					},
+					{
+						value: 'public',
+						label: 'Public website plan',
+						description: 'Visible on the Plaqad pricing page and any product pages you select.',
+					},
+				].map((option) => {
+					const selected = (settings.public ? 'public' : 'private') === option.value;
+					return (
+						<div
+							key={option.value}
+							className={cn(
+								'flex items-start gap-3 rounded-[6px] border p-4 transition-colors',
+								selected ? 'border-[#092E44] bg-slate-50' : 'border-zinc-200 hover:border-zinc-400',
+							)}>
+							<RadioGroupItem id={`plan-audience-${option.value}`} value={option.value} className='mt-0.5 shrink-0' />
+							<label htmlFor={`plan-audience-${option.value}`} className='cursor-pointer'>
+								<span className='block text-sm font-medium text-zinc-950'>{option.label}</span>
+								<span className='mt-1 block text-sm leading-5 text-zinc-600'>{option.description}</span>
+							</label>
+						</div>
+					);
+				})}
+			</RadioGroup>
 
 			{settings.public && (
-				<div className='mt-6 space-y-6'>
+				<div className='mt-6 space-y-6 border-t border-zinc-200 pt-6'>
+					<div>
+						<h4 className='text-sm font-semibold text-zinc-950'>Website publishing</h4>
+						<p className='mt-1 text-sm text-zinc-600'>Set how this public plan appears. Every option below is saved automatically.</p>
+					</div>
 					<div>
 						<p className='text-sm font-medium text-zinc-950'>Product pages</p>
 						<p className='mt-1 text-sm text-zinc-600'>

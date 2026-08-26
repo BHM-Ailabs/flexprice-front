@@ -9,7 +9,14 @@ import { SIDEBAR_PRICING_PROMO_QUERY_KEY } from '@/hooks/useShouldShowSidebarPri
 import { useNavigate } from 'react-router';
 import { RouteNames } from '@/core/routes/Routes';
 import { CreatePlanRequest, UpdatePlanRequest, PlanResponse, CreatePlanResponse } from '@/types/dto';
-import { WebsitePublishingSection } from '@/components/organisms/PlanForm';
+import { PlanMetadataField, PlanMetadataFieldsSection, WebsitePublishingSection } from '@/components/organisms/PlanForm';
+import {
+	applyCustomPlanMetadataFields,
+	customPlanMetadataFieldsFromMetadata,
+	hasPlanMetadataFieldErrors,
+	PlanMetadataFieldError,
+	validatePlanMetadataFields,
+} from '@/lib/planMetadataFields';
 interface Props {
 	data?: Plan | null;
 	open?: boolean;
@@ -29,7 +36,11 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 		metadata: data?.metadata,
 		id: data?.id,
 	});
-	const [metadataString, setMetadataString] = useState<string>(data?.metadata ? JSON.stringify(data.metadata, null, 2) : '');
+	const [metadataFieldSequence, setMetadataFieldSequence] = useState(0);
+	const [metadataFields, setMetadataFields] = useState<PlanMetadataField[]>(() =>
+		customPlanMetadataFieldsFromMetadata(data?.metadata).map((field, index) => ({ ...field, id: `metadata-field-${index}` })),
+	);
+	const [metadataFieldErrors, setMetadataFieldErrors] = useState<PlanMetadataFieldError[]>([]);
 	const [errors, setErrors] = useState<Partial<Record<keyof CreatePlanRequest, string>>>({});
 
 	const { mutate: updatePlan, isPending } = useMutation<
@@ -66,15 +77,22 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 				lookup_key: data.lookup_key || '',
 				metadata: data.metadata,
 			});
-			setMetadataString(data.metadata ? JSON.stringify(data.metadata, null, 2) : '');
+			const fields = customPlanMetadataFieldsFromMetadata(data.metadata).map((field, index) => ({
+				...field,
+				id: `metadata-field-${index}`,
+			}));
+			setMetadataFields(fields);
+			setMetadataFieldSequence(fields.length);
 		} else {
 			setFormData({
 				name: '',
 				description: '',
 				lookup_key: '',
 			});
-			setMetadataString('');
+			setMetadataFields([]);
+			setMetadataFieldSequence(0);
 		}
+		setMetadataFieldErrors([]);
 		setErrors({});
 	}, [data, open]);
 
@@ -96,32 +114,15 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 			newErrors.lookup_key = 'Lookup key is required';
 		}
 
-		if (metadataString.trim()) {
-			try {
-				const parsed = JSON.parse(metadataString);
-				if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-					newErrors.metadata = 'Metadata must be a JSON object';
-				} else {
-					const allStrings = Object.values(parsed).every((val) => typeof val === 'string');
-					if (!allStrings) {
-						newErrors.metadata = 'All metadata values must be strings';
-					}
-				}
-			} catch {
-				newErrors.metadata = 'Invalid Metadata format';
-			}
-		}
+		const nextMetadataFieldErrors = validatePlanMetadataFields(metadataFields);
+		setMetadataFieldErrors(nextMetadataFieldErrors);
 
 		setErrors(newErrors);
-		return Object.keys(newErrors).length === 0;
+		return Object.keys(newErrors).length === 0 && !hasPlanMetadataFieldErrors(nextMetadataFieldErrors);
 	};
 
 	const handleStructuredMetadataChange = (metadata: NonNullable<CreatePlanRequest['metadata']>) => {
 		setFormData((previous) => ({ ...previous, metadata }));
-		setMetadataString(JSON.stringify(metadata, null, 2));
-		if (errors.metadata) {
-			setErrors((previous) => ({ ...previous, metadata: undefined }));
-		}
 	};
 
 	const handleSave = () => {
@@ -129,14 +130,7 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 			return;
 		}
 
-		let metadata = undefined;
-		if (metadataString.trim()) {
-			try {
-				metadata = JSON.parse(metadataString);
-			} catch {
-				return;
-			}
-		}
+		const metadata = applyCustomPlanMetadataFields(formData.metadata, metadataFields);
 
 		if (isEdit) {
 			const updateDto: UpdatePlanRequest & { id: string } = {
@@ -163,6 +157,7 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 		<Sheet
 			isOpen={open}
 			onOpenChange={onOpenChange}
+			size='lg'
 			title={isEdit ? 'Edit Plan' : 'Create Plan'}
 			description={isEdit ? 'Enter plan details to update the plan.' : 'Enter plan details to create a new plan.'}
 			trigger={trigger}>
@@ -206,27 +201,17 @@ const PlanDrawer: FC<Props> = ({ data, open, onOpenChange, trigger, refetchQuery
 			<WebsitePublishingSection metadata={formData.metadata} onChange={handleStructuredMetadataChange} />
 
 			<Spacer height={'20px'} />
-			<Textarea
-				value={metadataString}
-				onChange={(e) => {
-					setMetadataString(e);
-					try {
-						const parsed: unknown = e.trim() ? JSON.parse(e) : {};
-						if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-							setFormData((previous) => ({ ...previous, metadata: parsed as Record<string, string> }));
-						}
-					} catch {
-						// Validation below owns the error state while the operator is typing.
-					}
-					if (errors.metadata) {
-						setErrors({ ...errors, metadata: undefined });
-					}
+			<PlanMetadataFieldsSection
+				fields={metadataFields}
+				errors={metadataFieldErrors}
+				onChange={(fields) => {
+					setMetadataFields(fields);
+					setMetadataFieldErrors([]);
 				}}
-				error={errors.metadata}
-				className='min-h-[100px]'
-				placeholder='{"key": "value"}'
-				label='Advanced metadata (Optional)'
-				description='For integration-specific values not covered by the structured options above. All values must be strings.'
+				onAdd={() => {
+					setMetadataFields((fields) => [...fields, { id: `metadata-field-${metadataFieldSequence}`, key: '', value: '' }]);
+					setMetadataFieldSequence((sequence) => sequence + 1);
+				}}
 			/>
 
 			<Spacer height={'20px'} />

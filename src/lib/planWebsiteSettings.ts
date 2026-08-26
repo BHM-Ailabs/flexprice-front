@@ -1,5 +1,25 @@
 import { Metadata } from '@/models';
 
+export const PLAN_WEBSITE_METADATA_KEYS = [
+	'public',
+	'plaqad_products',
+	'plaqad_product',
+	'website_summary',
+	'website_price_label',
+	'website_billing_note',
+	'website_badge',
+	'website_highlight',
+	'website_display_order',
+	'website_features',
+	'website_cta_action',
+	'website_cta_label',
+	'website_cta_href',
+] as const;
+
+const PLAN_WEBSITE_METADATA_KEY_SET = new Set<string>(PLAN_WEBSITE_METADATA_KEYS);
+
+export const isPlanWebsiteMetadataKey = (key: string): boolean => PLAN_WEBSITE_METADATA_KEY_SET.has(key);
+
 export type PlanWebsiteCtaAction = 'auto' | 'subscribe' | 'sales' | 'custom';
 
 export interface PlanWebsiteSettings {
