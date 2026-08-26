@@ -13,12 +13,13 @@ import { BUCKET_SIZE, METER_AGGREGATION_TYPE, METER_USAGE_RESET_PERIOD } from '@
 import FeatureApi from '@/api/FeatureApi';
 import { CreateFeatureRequest, CreateMeterRequest } from '@/types/dto';
 import { useMutation } from '@tanstack/react-query';
-import { Gauge, SquareCheckBig, Wrench } from 'lucide-react';
+import { Braces, Gauge, SquareCheckBig, Wrench } from 'lucide-react';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+import { PLAQAD_PRODUCT_OPTIONS } from '@/constants/plaqad';
 
 // Feature type options constant
 const FEATURE_TYPE_OPTIONS: SelectOption[] = [
@@ -41,7 +42,19 @@ const FEATURE_TYPE_OPTIONS: SelectOption[] = [
 		suffixIcon: <Wrench className='size-4' />,
 		value: FEATURE_TYPE.STATIC,
 	},
+	{
+		label: 'Configuration',
+		description: 'Structured settings for a feature, such as allowed models, channels, regions, or workflow rules.',
+		suffixIcon: <Braces className='size-4' />,
+		value: FEATURE_TYPE.CONFIG,
+	},
 ];
+
+const normalizePlaqadOperation = (operation: string) => operation.trim().toLowerCase().replace(/\s+/g, '_');
+const plaqadLookupKey = (product: string, operation: string) =>
+	product && operation ? `plaqad:${product}:${normalizePlaqadOperation(operation)}` : undefined;
+const plaqadEventName = (product: string, operation: string) =>
+	product && operation ? `plaqad.${product}.${normalizePlaqadOperation(operation)}` : undefined;
 
 // Usage reset options constant
 // const USAGE_RESET_OPTIONS = [
@@ -147,7 +160,7 @@ const FEATURE_SCHEMA = z.object({
 	name: z.string().nonempty('Feature name is required'),
 	description: z.string().optional(),
 	lookup_key: z.string().optional(),
-	type: z.enum([FEATURE_TYPE.BOOLEAN, FEATURE_TYPE.METERED, FEATURE_TYPE.STATIC]).optional(),
+	type: z.enum([FEATURE_TYPE.BOOLEAN, FEATURE_TYPE.METERED, FEATURE_TYPE.STATIC, FEATURE_TYPE.CONFIG]).optional(),
 	meter_id: z.string().optional(),
 	unit_singular: z.string().optional(),
 	unit_plural: z.string().optional(),
@@ -183,7 +196,7 @@ type FeatureFormData = Omit<CreateFeatureRequest, 'name' | 'type' | 'meter'> & {
 	meter?: Partial<CreateMeterRequest>;
 };
 
-type FeatureErrors = Partial<Record<keyof CreateFeatureRequest, string>>;
+type FeatureErrors = Partial<Record<keyof CreateFeatureRequest | 'plaqad_product' | 'plaqad_operation', string>>;
 type MeterErrors = Partial<Record<keyof CreateMeterRequest | 'aggregation_type' | 'aggregation_field' | 'aggregation_multiplier', string>>;
 
 // Custom hook for feature form logic
@@ -213,13 +226,19 @@ const useFeatureForm = () => {
 
 	const validateFeature = useCallback((featureData: FeatureFormData) => {
 		const result = FEATURE_SCHEMA.safeParse(featureData);
+		const product = featureData.metadata?.plaqad_product?.trim();
+		const operation = featureData.metadata?.plaqad_operation?.trim();
 
-		if (!result.success) {
+		if (!result.success || !product || !operation) {
 			const newErrors: FeatureErrors = {};
-			result.error.errors.forEach((error) => {
-				const field = error.path[0] as keyof CreateFeatureRequest;
-				newErrors[field] = error.message;
-			});
+			if (!result.success) {
+				result.error.errors.forEach((error) => {
+					const field = error.path[0] as keyof CreateFeatureRequest;
+					newErrors[field] = error.message;
+				});
+			}
+			if (!product) newErrors.plaqad_product = 'Plaqad product is required';
+			if (!operation) newErrors.plaqad_operation = 'Operation key is required';
 			setErrors(newErrors);
 			return false;
 		}
@@ -294,15 +313,17 @@ const FeatureDetailsSection = ({
 	onUpdateFeature: (updates: Partial<FeatureFormData>) => void;
 	onUpdateFormState: (updates: Partial<FeatureFormState>) => void;
 }) => {
+	const plaqadProduct = data.metadata?.plaqad_product ?? '';
+	const plaqadOperation = data.metadata?.plaqad_operation ?? '';
 	const handleNameChange = useCallback(
 		(name: string) => {
 			onUpdateFeature({
 				name,
-				lookup_key: 'feat-' + name.replace(/\s/g, '-').toLowerCase(),
+				lookup_key: plaqadLookupKey(plaqadProduct, plaqadOperation) ?? 'feat-' + name.replace(/\s/g, '-').toLowerCase(),
 				meter: data.meter ? { ...data.meter, name } : undefined,
 			});
 		},
-		[onUpdateFeature, data.meter],
+		[onUpdateFeature, data.meter, plaqadProduct, plaqadOperation],
 	);
 
 	const handleTypeChange = useCallback(
@@ -314,9 +335,9 @@ const FeatureDetailsSection = ({
 				onUpdateFeature({
 					meter: {
 						name: data.name || '',
-						event_name: '',
+						event_name: plaqadEventName(plaqadProduct, plaqadOperation) ?? '',
 						aggregation: {
-							type: METER_AGGREGATION_TYPE.SUM,
+							type: METER_AGGREGATION_TYPE.COUNT,
 							field: '',
 						},
 						reset_usage: METER_USAGE_RESET_PERIOD.BILLING_PERIOD,
@@ -326,7 +347,7 @@ const FeatureDetailsSection = ({
 				onUpdateFeature({ meter: undefined });
 			}
 		},
-		[onUpdateFeature, data.name],
+		[onUpdateFeature, data.name, plaqadProduct, plaqadOperation],
 	);
 
 	const handleUnitSingularChange = useCallback(
@@ -377,6 +398,40 @@ const FeatureDetailsSection = ({
 					className='w-full overflow-hidden'
 					value={data.type}
 					onChange={handleTypeChange}
+				/>
+			</div>
+
+			<Spacer height='16px' />
+
+			<div className='grid grid-cols-2 gap-4'>
+				<Select
+					label='Plaqad product*'
+					description='Scopes this feature to the product that is allowed to enforce it.'
+					placeholder='Select product'
+					options={PLAQAD_PRODUCT_OPTIONS}
+					value={plaqadProduct}
+					error={errors.plaqad_product}
+					onChange={(product) =>
+						onUpdateFeature({
+							metadata: { ...(data.metadata ?? {}), plaqad_product: product },
+							lookup_key: plaqadLookupKey(product, plaqadOperation) ?? data.lookup_key,
+							meter: data.meter ? { ...data.meter, event_name: plaqadEventName(product, plaqadOperation) ?? '' } : undefined,
+						})
+					}
+				/>
+				<Input
+					label='Operation key*'
+					description='Stable code used by the product, e.g. scheduled_report or cv_parse.'
+					placeholder='scheduled_report'
+					value={plaqadOperation}
+					error={errors.plaqad_operation}
+					onChange={(operation) =>
+						onUpdateFeature({
+							metadata: { ...(data.metadata ?? {}), plaqad_operation: normalizePlaqadOperation(operation) },
+							lookup_key: plaqadLookupKey(plaqadProduct, operation) ?? data.lookup_key,
+							meter: data.meter ? { ...data.meter, event_name: plaqadEventName(plaqadProduct, operation) ?? '' } : undefined,
+						})
+					}
 				/>
 			</div>
 
@@ -557,12 +612,14 @@ const FeatureDetailsSection = ({
 // Event Details Section Component
 const EventDetailsSection = ({
 	meter,
+	lockedEventName,
 	meterErrors,
 	formState,
 	onUpdateFeature,
 	onUpdateFormState,
 }: {
 	meter: Partial<CreateMeterRequest> | undefined;
+	lockedEventName?: string;
 	meterErrors: MeterErrors;
 	formState: FeatureFormState;
 	onUpdateFeature: (updates: Partial<FeatureFormData>) => void;
@@ -596,10 +653,15 @@ const EventDetailsSection = ({
 	return (
 		<Card className='card'>
 			<Input
-				value={meter?.event_name || ''}
+				value={lockedEventName || meter?.event_name || ''}
 				placeholder='tokens_total'
 				label='Event Name*'
-				description='A unique identifier for the event used to filter and measure usage e.g. user_signup, api_calls, etc.'
+				description={
+					lockedEventName
+						? 'Generated from the Plaqad product and operation so Auth can mirror allowance settlement reliably.'
+						: 'A unique identifier for the event used to filter and measure usage e.g. user_signup, api_calls, etc.'
+				}
+				disabled={Boolean(lockedEventName)}
 				error={meterErrors.event_name}
 				onChange={handleEventNameChange}
 			/>
@@ -983,6 +1045,7 @@ const AddFeaturePage = () => {
 						<div className='w-full'>
 							<EventDetailsSection
 								meter={data.meter}
+								lockedEventName={plaqadEventName(data.metadata?.plaqad_product ?? '', data.metadata?.plaqad_operation ?? '')}
 								meterErrors={meterErrors}
 								formState={formState}
 								onUpdateFeature={updateFeatureData}

@@ -5,6 +5,7 @@ export { default as ForgotPasswordForm } from './ForgotPasswordForm';
 export { default as GoogleSignin } from './GoogleSignin';
 export { default as LandingSection } from './LandingSection';
 export { default as LoginForm } from './LoginForm';
+export { default as PlaqadCallback } from './PlaqadCallback';
 export { default as ResendVerification } from './ResendVerification';
 export { default as ResetPasswordForm } from './ResetPasswordForm';
 export { default as SignupConfirmation } from './SignupConfirmation';

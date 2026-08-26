@@ -30,6 +30,8 @@ export const getFeatureTypeChips = ({
 			return <Chip textColor='#1E3A8A' bgColor='#F0F9FF' icon={showIcon && icon} label={showLabel && 'Metered'} />;
 		case FEATURE_TYPE.BOOLEAN:
 			return <Chip textColor='#075985' bgColor='#F0F9FF' icon={showIcon && icon} label={showLabel && 'Boolean'} />;
+		case FEATURE_TYPE.CONFIG:
+			return <Chip textColor='#6B21A8' bgColor='#FAF5FF' icon={showIcon && icon} label={showLabel && 'Configuration'} />;
 		default:
 			return <Chip textColor='#075985' bgColor='#F0F9FF' icon={showIcon && icon} label={showLabel && '--'} />;
 	}
@@ -48,6 +50,8 @@ const getFeatureValue = (data: CustomerUsage) => {
 			);
 		case FEATURE_TYPE.BOOLEAN:
 			return data.is_enabled ? 'True' : 'False';
+		case FEATURE_TYPE.CONFIG:
+			return data.sources?.[0]?.config_value ? JSON.stringify(data.sources[0].config_value) : '--';
 		default:
 			return '--';
 	}

@@ -147,6 +147,7 @@ const featureFilterOptions: FilterField[] = [
 			{ value: FEATURE_TYPE.METERED, label: 'Metered' },
 			{ value: FEATURE_TYPE.BOOLEAN, label: 'Boolean' },
 			{ value: FEATURE_TYPE.STATIC, label: 'Static' },
+			{ value: FEATURE_TYPE.CONFIG, label: 'Configuration' },
 		],
 	},
 ];
@@ -174,6 +175,8 @@ const getFeatureTypeChips = (type: string, addIcon = false) => {
 			return <Chip textColor='#1E40AF' bgColor='#DBEAFE' icon={addIcon ? icon : null} label={toSentenceCase(type)} className='text-xs' />;
 		case FEATURE_TYPE.BOOLEAN:
 			return <Chip textColor='#166534' bgColor='#DCFCE7' icon={addIcon ? icon : null} label={toSentenceCase(type)} className='text-xs' />;
+		case FEATURE_TYPE.CONFIG:
+			return <Chip textColor='#6B21A8' bgColor='#F3E8FF' icon={addIcon ? icon : null} label='Configuration' className='text-xs' />;
 		default:
 			return <Chip textColor='#6B7280' bgColor='#F9FAFB' icon={addIcon ? icon : null} label={toSentenceCase(type)} className='text-xs' />;
 	}

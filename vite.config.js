@@ -14,10 +14,8 @@ export default defineConfig({
         },
     },
     server: {
-        cors: {
-            origin: 'http://localhost:3000',
-            methods: ['GET', 'POST'],
-        },
-        host: 'localhost',
+        cors: true,
+        host: '0.0.0.0',
+        allowedHosts: true,
     },
 });

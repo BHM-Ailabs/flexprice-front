@@ -60,7 +60,7 @@ axiosClient.interceptors.response.use(
 		if (error.response) {
 			switch (error.response.status) {
 				case 401:
-					await AuthService.logout();
+					await AuthService.logout(false);
 					// Redirect to login or show message
 					break;
 				case 403:

@@ -12,6 +12,8 @@ import { PlanApi } from '@/api';
 import { useState, useEffect } from 'react';
 import { logger } from '@/utils/common/Logger';
 import toast from 'react-hot-toast';
+import { PLAQAD_PRODUCT_LABELS } from '@/constants/plaqad';
+import { planWebsiteSettingsFromMetadata } from '@/lib/planWebsiteSettings';
 
 const PlanInformationTab = () => {
 	const { planId } = useParams<{ planId: string }>();
@@ -31,6 +33,10 @@ const PlanInformationTab = () => {
 	});
 
 	const [localMetadata, setLocalMetadata] = useState<Record<string, string>>({});
+	const websiteSettings = planWebsiteSettingsFromMetadata(localMetadata);
+	const websiteProducts = websiteSettings.products.length
+		? websiteSettings.products.map((product) => PLAQAD_PRODUCT_LABELS[product] ?? product).join(', ')
+		: 'Automatic from linked entitlements';
 
 	useEffect(() => {
 		if (planData?.metadata) {
@@ -108,7 +114,40 @@ const PlanInformationTab = () => {
 					<Spacer className='!h-4' />
 					<DetailsCard variant='stacked' data={planDetails} childrenAtTop cardStyle='borderless' />
 
-					{/* Metadata Section Below Plan Details */}
+					<Divider className='my-4' />
+					<div className='mt-8'>
+						<div className='mb-2 flex items-center justify-between gap-4'>
+							<div>
+								<h3 className={getTypographyClass('card-header') + '!text-[16px]'}>Website publishing</h3>
+								<p className='mt-1 text-sm text-zinc-600'>Public visibility, product targeting, and card presentation.</p>
+							</div>
+							{!isArchived && (
+								<Button variant='outline' size='sm' onClick={() => setPlanDrawerOpen(true)}>
+									Edit website settings
+								</Button>
+							)}
+						</div>
+						<DetailsCard
+							variant='stacked'
+							data={[
+								{
+									label: 'Website status',
+									value: (
+										<Chip label={websiteSettings.public ? 'Visible' : 'Hidden'} variant={websiteSettings.public ? 'success' : 'default'} />
+									),
+								},
+								{ label: 'Product pages', value: websiteProducts },
+								{ label: 'Summary', value: websiteSettings.summary || 'Uses plan description' },
+								{ label: 'Price label', value: websiteSettings.priceLabel || 'Uses active FlexPrice price' },
+								{
+									label: 'Feature highlights',
+									value: websiteSettings.features.length ? websiteSettings.features.join(', ') : 'Uses linked entitlements',
+								},
+							]}
+							cardStyle='borderless'
+						/>
+					</div>
+
 					<Divider className='my-4' />
 					<div className='mt-8'>
 						<div className='flex justify-between items-center mb-2'>

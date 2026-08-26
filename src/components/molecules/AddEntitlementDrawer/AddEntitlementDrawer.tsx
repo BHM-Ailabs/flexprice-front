@@ -1,4 +1,4 @@
-import { Button, Checkbox, Dialog, FormHeader, Input, Select, SelectFeature, Sheet, Spacer, Toggle } from '@/components/atoms';
+import { Button, Checkbox, Dialog, FormHeader, Input, Select, SelectFeature, Sheet, Spacer, Textarea, Toggle } from '@/components/atoms';
 import { getFeatureIcon } from '@/components/atoms/SelectFeature/SelectFeature';
 import { AddChargesButton } from '@/components/organisms/PlanForm/SetupChargesSection';
 
@@ -28,6 +28,8 @@ interface Props {
 interface ValidationErrors {
 	usage_limit?: string;
 	static_value?: string;
+	config_value?: string;
+	grant_config?: string;
 	usage_reset_period?: string;
 	is_enabled?: string;
 	general?: string;
@@ -97,6 +99,34 @@ const validateStaticFeature = (tempEntitlement: Partial<Entitlement>): Validatio
 	return newErrors;
 };
 
+const validateConfigFeature = (tempEntitlement: Partial<Entitlement>): ValidationErrors => {
+	if (!tempEntitlement.config_value || Array.isArray(tempEntitlement.config_value)) {
+		return { config_value: 'Enter a valid JSON object' };
+	}
+	return {};
+};
+
+const validateGrantConfig = (tempEntitlement: Partial<Entitlement>): ValidationErrors => {
+	const hasGrantConfig =
+		tempEntitlement.grant_measure !== undefined ||
+		tempEntitlement.grant_duration_value !== undefined ||
+		tempEntitlement.grant_duration_unit !== undefined ||
+		tempEntitlement.grant_quota !== undefined;
+	if (!hasGrantConfig) return {};
+	const quota = Number(tempEntitlement.grant_quota);
+	if (
+		!tempEntitlement.grant_measure ||
+		!Number.isInteger(tempEntitlement.grant_duration_value) ||
+		(tempEntitlement.grant_duration_value ?? 0) <= 0 ||
+		!tempEntitlement.grant_duration_unit ||
+		!Number.isFinite(quota) ||
+		quota <= 0
+	) {
+		return { grant_config: 'Grant measure, positive duration, duration unit, and positive quota are all required' };
+	}
+	return {};
+};
+
 const validateEntitlement = (activeFeature: Feature | null, tempEntitlement: Partial<Entitlement>): ValidationErrors => {
 	if (!activeFeature) {
 		return { feature: 'Please select a feature' };
@@ -104,9 +134,14 @@ const validateEntitlement = (activeFeature: Feature | null, tempEntitlement: Par
 
 	switch (activeFeature.type) {
 		case FEATURE_TYPE.METERED:
-			return validateMeteredFeature(activeFeature, tempEntitlement);
+			return {
+				...validateMeteredFeature(activeFeature, tempEntitlement),
+				...validateGrantConfig(tempEntitlement),
+			};
 		case FEATURE_TYPE.STATIC:
 			return validateStaticFeature(tempEntitlement);
+		case FEATURE_TYPE.CONFIG:
+			return validateConfigFeature(tempEntitlement);
 		case FEATURE_TYPE.BOOLEAN:
 			// Boolean features don't need additional validation
 			return {};
@@ -245,6 +280,7 @@ const AddEntitlementDrawer: FC<Props> = ({
 	const [activeFeature, setActiveFeature] = useState<Feature | null>(null);
 	const [tempEntitlement, setTempEntitlement] = useState<Partial<Entitlement>>({});
 	const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+	const [configValueInput, setConfigValueInput] = useState('');
 
 	// Fetch full feature (including reporting_unit) when one is selected; list API may omit it
 	const { data: fullFeature } = useQuery({
@@ -267,6 +303,7 @@ const AddEntitlementDrawer: FC<Props> = ({
 		setActiveFeature(null);
 		setTempEntitlement({});
 		setIsCalculatorOpen(false);
+		setConfigValueInput('');
 	}, [disabledFeatures]);
 
 	// Memoize already added feature IDs (from entitlements + initial entitlements)
@@ -316,6 +353,12 @@ const AddEntitlementDrawer: FC<Props> = ({
 				usage_reset_period: entitlement.usage_reset_period as ENTITLEMENT_USAGE_RESET_PERIOD | undefined,
 				is_soft_limit: entitlement.is_soft_limit,
 				static_value: entitlement.static_value,
+				config_value: entitlement.config_value,
+				grant_measure: entitlement.grant_measure,
+				grant_duration_value: entitlement.grant_duration_value,
+				grant_duration_unit: entitlement.grant_duration_unit,
+				grant_quota: entitlement.grant_quota,
+				aggregation_mode: entitlement.aggregation_mode,
 				entity_type: entityType,
 				entity_id: entityId,
 			}));
@@ -385,6 +428,7 @@ const AddEntitlementDrawer: FC<Props> = ({
 		setActiveFeature(null);
 		setErrors({});
 		setIsCalculatorOpen(false);
+		setConfigValueInput('');
 	}, [activeFeature, validateCurrentEntitlement, alreadyAddedFeatureIds, tempEntitlement, entityType, entityId]);
 
 	// Clear errors when feature changes
@@ -414,6 +458,7 @@ const AddEntitlementDrawer: FC<Props> = ({
 		}
 		setTempEntitlement({});
 		setIsCalculatorOpen(false);
+		setConfigValueInput('');
 	}, [activeFeature]);
 
 	return (
@@ -561,6 +606,75 @@ const AddEntitlementDrawer: FC<Props> = ({
 											}));
 										}}
 									/>
+									<Spacer className='!my-4' />
+									<Toggle
+										checked={tempEntitlement.grant_measure !== undefined}
+										label='Rolling quota grant'
+										description='Issue a fresh quota for each time window. The backend supports windows down to one hour.'
+										onChange={(value) => {
+											setTempEntitlement((prev) => ({
+												...prev,
+												grant_measure: value ? 'quantity' : undefined,
+												grant_duration_value: value ? 1 : undefined,
+												grant_duration_unit: value ? 'hour' : undefined,
+												grant_quota: value ? '1' : undefined,
+												aggregation_mode: value ? 'additive' : undefined,
+											}));
+										}}
+									/>
+									{tempEntitlement.grant_measure !== undefined && (
+										<div className='mt-4 space-y-4 rounded-md border border-border p-4'>
+											{errors.grant_config && <p className='text-sm text-red-600'>{errors.grant_config}</p>}
+											<div className='grid grid-cols-2 gap-4'>
+												<Select
+													label='Measure'
+													value={tempEntitlement.grant_measure}
+													options={[
+														{ label: 'Quantity', value: 'quantity' },
+														{ label: 'Priced amount', value: 'amount' },
+													]}
+													onChange={(value) => setTempEntitlement((prev) => ({ ...prev, grant_measure: value as 'quantity' | 'amount' }))}
+												/>
+												<Input
+													label='Quota per window'
+													variant='formatted-number'
+													value={tempEntitlement.grant_quota ?? ''}
+													onChange={(value) => setTempEntitlement((prev) => ({ ...prev, grant_quota: value || undefined }))}
+												/>
+												<Input
+													label='Window length'
+													variant='formatted-number'
+													value={tempEntitlement.grant_duration_value?.toString() ?? ''}
+													onChange={(value) =>
+														setTempEntitlement((prev) => ({ ...prev, grant_duration_value: value ? Number(value) : undefined }))
+													}
+												/>
+												<Select
+													label='Window unit'
+													value={tempEntitlement.grant_duration_unit}
+													options={[
+														{ label: 'Hour', value: 'hour' },
+														{ label: 'Day', value: 'day' },
+														{ label: 'Week', value: 'week' },
+													]}
+													onChange={(value) =>
+														setTempEntitlement((prev) => ({ ...prev, grant_duration_unit: value as 'hour' | 'day' | 'week' }))
+													}
+												/>
+											</div>
+											<Select
+												label='Combine multiple grants'
+												value={tempEntitlement.aggregation_mode ?? 'additive'}
+												options={[
+													{ label: 'Additive — combine quotas', value: 'additive' },
+													{ label: 'Parallel — independent buckets', value: 'parallel' },
+												]}
+												onChange={(value) =>
+													setTempEntitlement((prev) => ({ ...prev, aggregation_mode: value as 'additive' | 'parallel' }))
+												}
+											/>
+										</div>
+									)}
 								</div>
 							)}
 
@@ -591,6 +705,35 @@ const AddEntitlementDrawer: FC<Props> = ({
 												</Button>
 											) : undefined
 										}
+									/>
+								</div>
+							)}
+
+							{/* configuration features */}
+							{activeFeature.type === FEATURE_TYPE.CONFIG && (
+								<div>
+									<Textarea
+										label='Configuration (JSON object)'
+										placeholder={'{\n  "allowed_models": ["standard"],\n  "max_agents": 3\n}'}
+										value={configValueInput}
+										error={errors.config_value}
+										onChange={(value) => {
+											setConfigValueInput(value);
+											try {
+												const parsed: unknown = JSON.parse(value);
+												setTempEntitlement((prev) => ({
+													...prev,
+													config_value:
+														parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+															? (parsed as Record<string, unknown>)
+															: undefined,
+												}));
+												setErrors((prev) => ({ ...prev, config_value: undefined }));
+											} catch {
+												setTempEntitlement((prev) => ({ ...prev, config_value: undefined }));
+												setErrors((prev) => ({ ...prev, config_value: 'Enter a valid JSON object' }));
+											}
+										}}
 									/>
 								</div>
 							)}

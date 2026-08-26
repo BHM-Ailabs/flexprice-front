@@ -36,6 +36,8 @@ const getFeatureValue = (entitlement: Entitlement) => {
 			);
 		case FEATURE_TYPE.BOOLEAN:
 			return entitlement.is_enabled ? 'Yes' : 'No';
+		case FEATURE_TYPE.CONFIG:
+			return entitlement.config_value ? JSON.stringify(entitlement.config_value) : '--';
 		default:
 			return '--';
 	}

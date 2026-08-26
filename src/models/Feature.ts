@@ -51,6 +51,7 @@ export enum FEATURE_TYPE {
 	METERED = 'metered',
 	STATIC = 'static',
 	BOOLEAN = 'boolean',
+	CONFIG = 'config',
 }
 
 export default Feature;
