@@ -19,6 +19,7 @@ export interface InvoiceFilter {
 	order?: string;
 	status?: string;
 	expand?: string;
+	search?: string;
 	// Time range
 	start_time?: string;
 	end_time?: string;
@@ -29,6 +30,7 @@ export interface InvoiceFilter {
 	invoice_ids?: string[];
 	customer_id?: string;
 	external_customer_id?: string;
+	currency?: string;
 	subscription_id?: string;
 	subscription_customer_id?: string;
 	invoice_type?: string;
