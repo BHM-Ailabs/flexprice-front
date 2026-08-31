@@ -1,4 +1,6 @@
-export const PLAQAD_PRODUCT_OPTIONS: { label: string; value: string }[] = [
+export type PlaqadProduct = 'iq' | 'ba' | 'studio' | 'os' | 'pa' | 'talent' | 'intel' | 'scout' | 'people' | 'maestro';
+
+export const PLAQAD_PRODUCT_OPTIONS: { label: string; value: PlaqadProduct }[] = [
 	{ label: 'Plaqad IQ', value: 'iq' },
 	{ label: 'Plaqad BA', value: 'ba' },
 	{ label: 'Plaqad Studio', value: 'studio' },

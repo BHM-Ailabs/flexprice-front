@@ -1,4 +1,16 @@
-import { Button, Card, CodePreview, FormHeader, Input, Page, Select, SelectOption, Spacer, Textarea } from '@/components/atoms';
+import {
+	Button,
+	Card,
+	CodePreview,
+	FormHeader,
+	Input,
+	Page,
+	SearchableSelect,
+	Select,
+	SelectOption,
+	Spacer,
+	Textarea,
+} from '@/components/atoms';
 import { ApiDocsContent } from '@/components/molecules';
 import EventFilter, { EventFilterData } from '@/components/molecules/EventFilter';
 import SelectGroup from '@/components/organisms/PlanForm/SelectGroup';
@@ -19,7 +31,8 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import { PLAQAD_PRODUCT_OPTIONS } from '@/constants/plaqad';
+import { PLAQAD_PRODUCT_LABELS, PLAQAD_PRODUCT_OPTIONS } from '@/constants/plaqad';
+import { getPlaqadOperationOptions } from '@/constants/plaqad-operations';
 
 // Feature type options constant
 const FEATURE_TYPE_OPTIONS: SelectOption[] = [
@@ -300,7 +313,7 @@ const useFeatureForm = () => {
 };
 
 // Feature Details Section Component
-const FeatureDetailsSection = ({
+export const FeatureDetailsSection = ({
 	data,
 	errors,
 	formState,
@@ -315,6 +328,13 @@ const FeatureDetailsSection = ({
 }) => {
 	const plaqadProduct = data.metadata?.plaqad_product ?? '';
 	const plaqadOperation = data.metadata?.plaqad_operation ?? '';
+	const plaqadOperationOptions = useMemo(() => getPlaqadOperationOptions(plaqadProduct), [plaqadProduct]);
+	const plaqadProductLabel = PLAQAD_PRODUCT_LABELS[plaqadProduct] ?? 'the selected product';
+	const plaqadOperationDescription = !plaqadProduct
+		? 'Select a product to see its registered operational keys.'
+		: plaqadOperationOptions.length === 0
+			? `No operational keys are registered for ${plaqadProductLabel}.`
+			: `${plaqadOperationOptions.length} operational ${plaqadOperationOptions.length === 1 ? 'key' : 'keys'} registered for ${plaqadProductLabel}.`;
 	const handleNameChange = useCallback(
 		(name: string) => {
 			onUpdateFeature({
@@ -413,22 +433,27 @@ const FeatureDetailsSection = ({
 					error={errors.plaqad_product}
 					onChange={(product) =>
 						onUpdateFeature({
-							metadata: { ...(data.metadata ?? {}), plaqad_product: product },
-							lookup_key: plaqadLookupKey(product, plaqadOperation) ?? data.lookup_key,
-							meter: data.meter ? { ...data.meter, event_name: plaqadEventName(product, plaqadOperation) ?? '' } : undefined,
+							metadata: { ...(data.metadata ?? {}), plaqad_product: product, plaqad_operation: '' },
+							lookup_key: undefined,
+							meter: data.meter ? { ...data.meter, event_name: '' } : undefined,
 						})
 					}
 				/>
-				<Input
+				<SearchableSelect
 					label='Operation key*'
-					description='Stable code used by the product, e.g. scheduled_report or cv_parse.'
-					placeholder='scheduled_report'
+					description={plaqadOperationDescription}
+					placeholder={plaqadProduct ? 'Select operation' : 'Select a product first'}
+					searchPlaceholder={`Search ${plaqadProductLabel} operations...`}
+					emptyText={`No operational keys found for ${plaqadProductLabel}.`}
+					noOptionsText={`No operational keys registered for ${plaqadProductLabel}.`}
+					options={plaqadOperationOptions}
 					value={plaqadOperation}
 					error={errors.plaqad_operation}
+					disabled={!plaqadProduct}
 					onChange={(operation) =>
 						onUpdateFeature({
 							metadata: { ...(data.metadata ?? {}), plaqad_operation: normalizePlaqadOperation(operation) },
-							lookup_key: plaqadLookupKey(plaqadProduct, operation) ?? data.lookup_key,
+							lookup_key: plaqadLookupKey(plaqadProduct, operation),
 							meter: data.meter ? { ...data.meter, event_name: plaqadEventName(plaqadProduct, operation) ?? '' } : undefined,
 						})
 					}
