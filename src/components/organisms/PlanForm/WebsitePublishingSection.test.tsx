@@ -21,4 +21,18 @@ describe('WebsitePublishingSection', () => {
 
 		expect(onChange).toHaveBeenCalledWith({ contract_reference: 'ENT-1042', public: 'true' });
 	});
+
+	it('stores no more than five ordered public highlights', () => {
+		const onChange = vi.fn();
+		render(<WebsitePublishingSection metadata={{ public: 'true' }} onChange={onChange} />);
+
+		fireEvent.change(screen.getByPlaceholderText(/1 monitored brand/i), {
+			target: { value: 'First\nSecond\nThird\nFourth\nFifth\nSixth' },
+		});
+
+		expect(onChange).toHaveBeenLastCalledWith({
+			public: 'true',
+			website_features: JSON.stringify(['First', 'Second', 'Third', 'Fourth', 'Fifth']),
+		});
+	});
 });

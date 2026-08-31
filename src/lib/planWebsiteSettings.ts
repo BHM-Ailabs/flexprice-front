@@ -21,6 +21,7 @@ const PLAN_WEBSITE_METADATA_KEY_SET = new Set<string>(PLAN_WEBSITE_METADATA_KEYS
 export const isPlanWebsiteMetadataKey = (key: string): boolean => PLAN_WEBSITE_METADATA_KEY_SET.has(key);
 
 export type PlanWebsiteCtaAction = 'auto' | 'subscribe' | 'sales' | 'custom';
+export const MAX_PUBLIC_PLAN_HIGHLIGHTS = 5;
 
 export interface PlanWebsiteSettings {
 	public: boolean;
@@ -72,7 +73,7 @@ export function planWebsiteSettingsFromMetadata(metadata: Metadata = {}): PlanWe
 		badge: optionalString(metadata.website_badge),
 		highlight: metadata.website_highlight === 'true',
 		displayOrder: optionalString(metadata.website_display_order),
-		features: stringList(metadata.website_features),
+		features: stringList(metadata.website_features).slice(0, MAX_PUBLIC_PLAN_HIGHLIGHTS),
 		ctaAction: ctaAction(metadata),
 		ctaLabel: optionalString(metadata.website_cta_label),
 		ctaHref: optionalString(metadata.website_cta_href),
@@ -111,7 +112,7 @@ export function applyPlanWebsiteSettings(metadata: Metadata = {}, settings: Plan
 	if (settings.ctaAction === 'custom') setOptional(next, 'website_cta_href', settings.ctaHref);
 	else delete next.website_cta_href;
 
-	if (settings.features.length > 0) next.website_features = JSON.stringify(settings.features);
+	if (settings.features.length > 0) next.website_features = JSON.stringify(settings.features.slice(0, MAX_PUBLIC_PLAN_HIGHLIGHTS));
 	else delete next.website_features;
 
 	if (settings.highlight) next.website_highlight = 'true';

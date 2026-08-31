@@ -27,7 +27,7 @@ Precise, calm, trustworthy. The interface should feel like a dependable administ
 
 - Make consequential state explicit: publication, product targeting, and entitlement coverage must be readable at a glance.
 - Prefer structured controls and previews over memorized metadata keys.
-- Preserve a single source of truth: Website presentation should derive from the plan and its linked entitlements.
+- Separate presentation from enforcement: Website cards use the plan's ordered public highlights, while linked entitlements remain the complete operational contract.
 - Keep advanced metadata available without making it the normal path.
 - Show operators where a plan will appear before they publish it.
 

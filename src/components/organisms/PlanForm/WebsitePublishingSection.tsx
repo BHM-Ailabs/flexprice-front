@@ -1,7 +1,12 @@
 import { Checkbox, Input, Select, SelectOption, Textarea } from '@/components/atoms';
 import { PLAQAD_PRODUCT_OPTIONS } from '@/constants/plaqad';
 import { Metadata } from '@/models';
-import { applyPlanWebsiteSettings, planWebsiteSettingsFromMetadata, PlanWebsiteSettings } from '@/lib/planWebsiteSettings';
+import {
+	applyPlanWebsiteSettings,
+	MAX_PUBLIC_PLAN_HIGHLIGHTS,
+	planWebsiteSettingsFromMetadata,
+	PlanWebsiteSettings,
+} from '@/lib/planWebsiteSettings';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 
@@ -147,16 +152,24 @@ const WebsitePublishingSection = ({ metadata = {}, onChange }: WebsitePublishing
 					</div>
 
 					<Textarea
-						label='Feature highlights'
-						description='Optional marketing highlights, one per line. Linked FlexPrice entitlements are shown automatically.'
-						placeholder={'Priority monitoring\nWeekly executive brief'}
+						label='Public plan highlights'
+						description='These are the only features shown on public pricing cards, in this order. Add 3–5 broad outcomes or allowances; linked operational entitlements remain enforced but stay off the website.'
+						placeholder={
+							'1 monitored brand and 2 competitors\nNew data every 3 hours\n30 days of listening history\nAI-assisted alerts and reports'
+						}
 						value={settings.features.join('\n')}
+						suffix={
+							<span className='whitespace-nowrap text-xs text-zinc-500'>
+								{settings.features.length}/{MAX_PUBLIC_PLAN_HIGHLIGHTS}
+							</span>
+						}
 						onChange={(value) =>
 							update({
 								features: value
 									.split('\n')
 									.map((item) => item.trim())
-									.filter(Boolean),
+									.filter(Boolean)
+									.slice(0, MAX_PUBLIC_PLAN_HIGHLIGHTS),
 							})
 						}
 					/>
