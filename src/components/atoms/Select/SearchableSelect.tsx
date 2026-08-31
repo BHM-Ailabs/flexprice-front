@@ -11,6 +11,7 @@ export interface SelectOption {
 	suffixIcon?: React.ReactNode;
 	prefixIcon?: React.ReactNode;
 	description?: string;
+	supportingText?: string;
 	disabled?: boolean;
 }
 
@@ -81,7 +82,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 	const renderRadioOption = (option: SelectOption) => (
 		<CommandItem
 			key={option.value}
-			value={`${option.label} ${option.description || ''}`}
+			value={`${option.label} ${option.description || ''} ${option.supportingText || ''}`}
 			onSelect={() => handleSelect(option.value)}
 			disabled={option.disabled}
 			className={cn(
@@ -95,10 +96,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 				<Circle className='size-4 text-gray-400 absolute' />
 			</span>
 
-			<div className='flex items-center space-x-2 w-full'>
-				<div className='flex flex-col mr-2 w-full'>
+			<div className='flex w-full items-center gap-2'>
+				<div className='mr-2 flex w-full flex-col gap-0.5'>
 					<span className='break-words'>{option.label}</span>
-					{option.description && <span className='text-sm text-gray-500 break-words whitespace-normal'>{option.description}</span>}
+					{option.description && <span className='break-words text-sm text-muted-foreground'>{option.description}</span>}
+					{option.supportingText && <span className='break-all font-mono text-xs text-muted-foreground'>{option.supportingText}</span>}
 				</div>
 			</div>
 		</CommandItem>
@@ -107,30 +109,31 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 	const renderStandardOption = (option: SelectOption) => (
 		<CommandItem
 			key={option.value}
-			value={`${option.label} ${option.description || ''}`}
+			value={`${option.label} ${option.description || ''} ${option.supportingText || ''}`}
 			onSelect={() => handleSelect(option.value)}
 			disabled={option.disabled}
 			className={cn(
-				'cursor-pointer flex items-center space-x-2 justify-between w-full',
+				'flex w-full cursor-pointer items-center justify-between gap-2',
 				option.disabled && 'select-none cursor-not-allowed opacity-50',
 			)}>
 			<div
 				className={cn(
-					'flex w-full items-center space-x-2 justify-between',
+					'flex w-full items-center justify-between gap-2',
 					option.disabled && 'opacity-50 pointer-events-none',
 					option.suffixIcon && 'pr-8',
 					hideSelectedTick && '!pl-0',
 				)}>
 				{option.prefixIcon && option.prefixIcon}
 
-				<div className={cn('flex flex-col w-full', !hideSelectedTick && 'mr-0')}>
+				<div className={cn('flex w-full flex-col gap-0.5', !hideSelectedTick && 'mr-0')}>
 					<span className='break-words'>{option.label}</span>
-					{option.description && <span className='text-sm text-gray-500 break-words whitespace-normal'>{option.description}</span>}
+					{option.description && <span className='break-words text-sm text-muted-foreground'>{option.description}</span>}
+					{option.supportingText && <span className='break-all font-mono text-xs text-muted-foreground'>{option.supportingText}</span>}
 				</div>
 
 				<div className='flex items-center gap-2'>
 					{option.suffixIcon && <span>{option.suffixIcon}</span>}
-					{!hideSelectedTick && <Check className={cn('h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')} />}
+					{!hideSelectedTick && <Check className={cn('size-4', value === option.value ? 'opacity-100' : 'opacity-0')} />}
 				</div>
 			</div>
 		</CommandItem>
@@ -162,7 +165,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 						) : (
 							<>
 								<span className={cn('truncate', value ? '' : 'text-muted-foreground')}>{selectedOption?.label || placeholder}</span>
-								<ChevronDown className='h-4 w-4 opacity-50' />
+								<ChevronDown className='size-4 opacity-50' />
 							</>
 						)}
 					</button>
@@ -177,8 +180,8 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 									options.map((option) => (isRadio ? renderRadioOption(option) : renderStandardOption(option)))
 								) : (
 									<CommandItem disabled>
-										<div className='flex items-center space-x-2 w-full'>
-											<div className='flex flex-col mr-2 w-full'>
+										<div className='flex w-full items-center gap-2'>
+											<div className='mr-2 flex w-full flex-col'>
 												<span className='break-words'>{noOptionsText}</span>
 											</div>
 										</div>

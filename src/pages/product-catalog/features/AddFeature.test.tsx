@@ -75,7 +75,11 @@ describe('FeatureDetailsSection operation selector', () => {
 
 		expect(screen.getByText('101 operational keys registered for Plaqad Intel.')).toBeInTheDocument();
 		fireEvent.click(screen.getByRole('button', { name: 'Select operation' }));
-		fireEvent.change(screen.getByPlaceholderText('Search Plaqad Intel operations...'), { target: { value: 'crisis_score' } });
+		fireEvent.change(screen.getByPlaceholderText('Search Plaqad Intel operations...'), {
+			target: { value: 'recommended-response' },
+		});
+		expect(screen.getByText('On-demand AI crisis severity, trajectory, and recommended-response scoring.')).toBeInTheDocument();
+		expect(screen.getByText('plaqad:intel:crisis_score')).toBeInTheDocument();
 		fireEvent.click(screen.getByText('crisis_score'));
 
 		expect(onUpdateFeature).toHaveBeenCalledWith({
@@ -91,6 +95,8 @@ describe('FeatureDetailsSection operation selector', () => {
 		expect(screen.getByText('8 operational keys registered for Plaqad Talent.')).toBeInTheDocument();
 		fireEvent.click(screen.getByRole('button', { name: 'Select operation' }));
 		expect(screen.getByText('cv_parse')).toBeInTheDocument();
+		expect(screen.getByText('One Talent CV parsing run.')).toBeInTheDocument();
+		expect(screen.getByText('plaqad:talent:cv_parse')).toBeInTheDocument();
 		expect(screen.queryByText('crisis_score')).not.toBeInTheDocument();
 	});
 });

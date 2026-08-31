@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PLAQAD_OPERATION_KEYS_BY_PRODUCT, getPlaqadOperationOptions } from './plaqad-operations';
+import { PLAQAD_OPERATION_DESCRIPTIONS_BY_PRODUCT, PLAQAD_OPERATION_KEYS_BY_PRODUCT, getPlaqadOperationOptions } from './plaqad-operations';
 import { PLAQAD_PRODUCT_OPTIONS } from './plaqad';
 
 const EXPECTED_OPERATION_COUNTS = {
@@ -32,13 +32,25 @@ describe('Plaqad operation registry', () => {
 		expect(getPlaqadOperationOptions('talent')).toContainEqual({
 			value: 'cv_parse',
 			label: 'cv_parse',
-			description: 'plaqad:talent:cv_parse',
+			description: 'One Talent CV parsing run.',
+			supportingText: 'plaqad:talent:cv_parse',
 		});
 		expect(getPlaqadOperationOptions('intel')).toContainEqual({
 			value: 'firecrawl:news',
 			label: 'firecrawl:news',
-			description: 'plaqad:intel:firecrawl:news',
+			description: 'Provider-backed news search used as a resilient ingestion and backfill source.',
+			supportingText: 'plaqad:intel:firecrawl:news',
 		});
+	});
+
+	it.each(Object.keys(EXPECTED_OPERATION_COUNTS))('documents every registered %s operation', (product) => {
+		const operationKeys = PLAQAD_OPERATION_KEYS_BY_PRODUCT[product as keyof typeof PLAQAD_OPERATION_KEYS_BY_PRODUCT];
+		const descriptions = PLAQAD_OPERATION_DESCRIPTIONS_BY_PRODUCT[product as keyof typeof PLAQAD_OPERATION_DESCRIPTIONS_BY_PRODUCT];
+
+		expect(Object.keys(descriptions).sort()).toEqual([...operationKeys].sort());
+		for (const description of Object.values(descriptions)) {
+			expect(description.trim().length).toBeGreaterThan(0);
+		}
 	});
 
 	it('returns no choices before a valid product is selected', () => {

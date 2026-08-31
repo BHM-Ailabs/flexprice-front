@@ -1,6 +1,7 @@
 import type { SelectOption } from '@/components/atoms';
 
 import type { PlaqadProduct } from './plaqad';
+import operationDescriptions from './plaqad-operation-descriptions.json';
 
 /**
  * Product-owned operation registry used by the feature authoring UI.
@@ -155,14 +156,18 @@ export const PLAQAD_OPERATION_KEYS_BY_PRODUCT: Record<PlaqadProduct, readonly st
 	],
 };
 
+export const PLAQAD_OPERATION_DESCRIPTIONS_BY_PRODUCT = operationDescriptions as Record<PlaqadProduct, Record<string, string>>;
+
 export const getPlaqadOperationOptions = (product: string): SelectOption[] => {
 	if (!(product in PLAQAD_OPERATION_KEYS_BY_PRODUCT)) return [];
 
 	const operationKeys = PLAQAD_OPERATION_KEYS_BY_PRODUCT[product as PlaqadProduct];
+	const descriptions = PLAQAD_OPERATION_DESCRIPTIONS_BY_PRODUCT[product as PlaqadProduct];
 
 	return operationKeys.map((operation) => ({
 		value: operation,
 		label: operation,
-		description: `plaqad:${product}:${operation}`,
+		description: descriptions[operation],
+		supportingText: `plaqad:${product}:${operation}`,
 	}));
 };
