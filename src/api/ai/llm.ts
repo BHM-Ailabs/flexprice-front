@@ -1,3 +1,4 @@
+import { validatePricingSchema } from './validation';
 import AiPricingParseApi from '@/api/AiPricingParseApi';
 import { PricingSchema } from './types';
 import { shouldPersistEntitlement } from './entitlementPolicy';
@@ -58,7 +59,7 @@ function parseErrMessage(err: unknown): string {
 
 /**
  * Parse a plain-English pricing description into a PricingSchema via Flexprice
- * POST /ai/pricing/parse-gemini (same session as other API calls).
+ * POST /ai/pricing/parse (same session as other API calls).
  */
 export async function parsePricingWithLLM(userPrompt: string): Promise<PricingSchema> {
 	const enrichedPrompt = buildContextualPrompt(userPrompt);
@@ -68,7 +69,7 @@ export async function parsePricingWithLLM(userPrompt: string): Promise<PricingSc
 			userPrompt: enrichedPrompt,
 			responseSchema: GEMINI_PRICING_SCHEMA as Record<string, unknown>,
 		});
-		return normalizePricingSchema(raw);
+		return normalizePricingSchema(validatePricingSchema(raw));
 	} catch (e) {
 		throw new Error(parseErrMessage(e));
 	}

@@ -3,7 +3,7 @@ import { BILLING_MODEL, BILLING_PERIOD, PRICE_ENTITY_TYPE, PRICE_TYPE, PRICE_UNI
 import { FEATURE_TYPE } from '@/models/Feature';
 import { ENTITLEMENT_ENTITY_TYPE, ENTITLEMENT_USAGE_RESET_PERIOD } from '@/models/Entitlement';
 import { METER_AGGREGATION_TYPE, METER_USAGE_RESET_PERIOD } from '@/models/Meter';
-import { ENTITY_STATUS, type Metadata } from '@/models';
+import { type Metadata } from '@/models';
 import { CREDIT_GRANT_CADENCE, CREDIT_GRANT_EXPIRATION_TYPE, CREDIT_GRANT_PERIOD, CREDIT_GRANT_SCOPE } from '@/models/CreditGrant';
 import FeatureApi from '@/api/FeatureApi';
 import { PlanApi } from '@/api/PlanApi';
@@ -22,9 +22,6 @@ import { normalizePricingSchema } from './llm';
 const AI_SETUP_METADATA: Metadata = { created_with_ai: 'true' };
 
 function assertValidPricingSchema(schema: PricingSchema): void {
-	if (schema.features.length === 0) {
-		throw new Error('AI response is missing features. Try a more specific description.');
-	}
 	if (schema.plans.length === 0) {
 		throw new Error('AI response is missing plans. Describe at least one plan or tier.');
 	}
@@ -171,6 +168,17 @@ export async function orchestrateSetup(schema: PricingSchema, onProgress?: Progr
 	const normalized = normalizePricingSchema(schema);
 	assertValidPricingSchema(normalized);
 
+	// Check every proposed key before creating anything. AI setup must never append
+	// charges or entitlements to an unrelated existing plan, including on retry.
+	const planLookupKeys = buildUniquePlanLookupKeys(normalized.plans);
+	for (const plan of normalized.plans) {
+		const existing = await PlanApi.getPlansByFilter({ limit: 1, lookup_key: planLookupKeys.get(plan.name)! });
+		if (existing.items?.length)
+			throw new Error(
+				`A plan with the key for "${plan.name}" already exists. Review that plan or choose a new name before creating pricing.`,
+			);
+	}
+
 	const hasEntitlements = normalized.plans.some((p) => p.entitlements.length > 0);
 	const hasCreditGrants = (normalized.credit_grants ?? []).length > 0;
 
@@ -192,6 +200,8 @@ export async function orchestrateSetup(schema: PricingSchema, onProgress?: Progr
 		const existingFeature = existing.items?.[0];
 
 		if (existingFeature) {
+			if (existingFeature.type !== featureType)
+				throw new Error(`Feature "${feat.key}" already exists with a different type. Use its existing type or choose a new key.`);
 			featureIdMap[feat.key] = existingFeature.id;
 			featureTypeMap[feat.key] = existingFeature.type as FEATURE_TYPE;
 			// meter_id is always present on the Feature model; meter?.id only when expand works
@@ -235,44 +245,19 @@ export async function orchestrateSetup(schema: PricingSchema, onProgress?: Progr
 
 	await waitMinStepElapsed(stepStart);
 
-	// Step 2 — Create plans (upsert: pre-check by lookup_key + name, create if missing)
+	// Step 2 — Create new plans. Surface failures instead of retrying a write
+	// under a different key after an ambiguous network response.
 	onProgress?.('creating_plans');
 	stepStart = Date.now();
 	const planIdMap: Record<string, string> = {};
-	const planLookupKeys = buildUniquePlanLookupKeys(normalized.plans);
-
 	for (const plan of normalized.plans) {
-		const planLookupKey = planLookupKeys.get(plan.name)!;
-
-		const existingPlans = await PlanApi.getPlansByFilter({
-			limit: 1,
-			lookup_key: planLookupKey,
-			status: ENTITY_STATUS.PUBLISHED,
+		const created = await PlanApi.createPlan({
+			name: plan.name,
+			description: plan.description,
+			lookup_key: planLookupKeys.get(plan.name)!,
+			metadata: AI_SETUP_METADATA,
 		});
-		const existingPlan = existingPlans.items?.[0];
-
-		if (existingPlan && existingPlan.name === plan.name) {
-			planIdMap[plan.name] = existingPlan.id;
-			continue;
-		}
-
-		try {
-			const created = await PlanApi.createPlan({
-				name: plan.name,
-				description: plan.description,
-				lookup_key: planLookupKey,
-				metadata: AI_SETUP_METADATA,
-			});
-			planIdMap[plan.name] = created.id;
-		} catch {
-			const created = await PlanApi.createPlan({
-				name: plan.name,
-				description: plan.description,
-				lookup_key: `${planLookupKey}_${Date.now()}`,
-				metadata: AI_SETUP_METADATA,
-			});
-			planIdMap[plan.name] = created.id;
-		}
+		planIdMap[plan.name] = created.id;
 	}
 
 	await waitMinStepElapsed(stepStart);
@@ -307,7 +292,7 @@ export async function orchestrateSetup(schema: PricingSchema, onProgress?: Progr
 
 		for (const charge of plan.usage_charges ?? []) {
 			const meterId = featureMeterIdMap[charge.feature_key];
-			if (!meterId) continue;
+			if (!meterId) throw new Error(`Meter for "${charge.feature_key}" is missing. Review the feature before creating usage prices.`);
 
 			const isPackage = charge.billing_model === 'package';
 			const filterValuesRecord: Record<string, string[]> | undefined =

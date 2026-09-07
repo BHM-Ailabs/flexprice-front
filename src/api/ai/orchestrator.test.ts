@@ -123,6 +123,7 @@ function setupHappyPathMocks(): void {
 
 describe('orchestrateSetup', () => {
 	beforeEach(() => {
+		vi.clearAllMocks();
 		setupHappyPathMocks();
 		vi.spyOn(global, 'setTimeout').mockImplementation((fn: TimerHandler) => {
 			if (typeof fn === 'function') (fn as () => void)();
@@ -141,6 +142,16 @@ describe('orchestrateSetup', () => {
 			const expected = [...getSetupProgressSteps(tpl.schema), 'done'];
 			expect(steps, `template ${tpl.label}`).toEqual(expected);
 		}
+	});
+
+	it('refuses existing plan keys before creating any billing objects', async () => {
+		vi.mocked(PlanApi.getPlansByFilter).mockResolvedValue({ items: [{ id: 'live-plan', name: 'Pro' }] } as Awaited<
+			ReturnType<typeof PlanApi.getPlansByFilter>
+		>);
+		await expect(orchestrateSetup(minimalCustomLikeSchema)).rejects.toThrow('already exists');
+		expect(FeatureApi.createFeature).not.toHaveBeenCalled();
+		expect(PlanApi.createPlan).not.toHaveBeenCalled();
+		expect(PriceApi.CreatePrice).not.toHaveBeenCalled();
 	});
 
 	it('completes for a minimal custom-like schema (no entitlements / credit grants)', async () => {

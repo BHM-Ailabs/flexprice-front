@@ -10,11 +10,11 @@ export interface ParseGeminiPricingRequest {
 }
 
 /**
- * Server-side Gemini proxy — same auth/interceptors as other Flexprice APIs
-POST /ai/pricing/parse-gemini (base URL is VITE_API_URL, e.g. http://localhost:8080/v1)
+ * Server-side OpenRouter pricing — same auth/interceptors as other Flexprice APIs
+POST /ai/pricing/parse (base URL is VITE_API_URL, e.g. http://localhost:8080/v1)
  */
 class AiPricingParseApi {
-	private static readonly path = '/ai/pricing/parse-gemini';
+	private static readonly path = '/ai/pricing/parse';
 
 	public static async parseGemini(body: ParseGeminiPricingRequest): Promise<PricingSchema> {
 		return await AxiosClient.post<PricingSchema, ParseGeminiPricingRequest>(this.path, body);

@@ -1,3 +1,4 @@
+import DashboardAssistant from '@/components/organisms/DashboardAssistant';
 import { Outlet, useNavigate } from 'react-router';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Sidebar } from '@/components/molecules/Sidebar';
@@ -58,6 +59,7 @@ const MainLayout: React.FC = () => {
 	return (
 		<SidebarProvider className='flex h-screen bg-gray-100 relative font-open-sans'>
 			<CommandPalette />
+			<DashboardAssistant />
 			{/* Sidebar */}
 			<Sidebar />
 			{/* Right Layout */}
