@@ -21,11 +21,11 @@ const Page: FC<Props> = ({ children, className, type = 'default', header, headin
 	useEffect(() => {
 		// Use documentTitle if provided, otherwise try to extract string from heading
 		if (documentTitle) {
-			document.title = `${documentTitle} | Flexprice`;
+			document.title = `${documentTitle} | Plaqad BSP`;
 		} else if (heading) {
 			// If heading is a string, use it directly
 			if (typeof heading === 'string') {
-				document.title = `${heading} | Flexprice`;
+				document.title = `${heading} | Plaqad BSP`;
 			}
 			// If heading is a ReactNode, don't set title (to avoid "[object Object]")
 		}

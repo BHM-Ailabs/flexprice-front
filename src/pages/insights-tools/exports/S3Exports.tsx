@@ -175,7 +175,7 @@ const S3Exports = () => {
 					<div>
 						<h4 className='text-sm font-semibold text-gray-900 mb-1'>Data Export</h4>
 						<p className='text-xs text-gray-600'>
-							Automatically export events, invoices, and other Flexprice data to your S3 bucket on a scheduled basis.
+							Automatically export events, invoices, and other Plaqad BSP data to your S3 bucket on a scheduled basis.
 						</p>
 					</div>
 					<div>

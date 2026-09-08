@@ -128,7 +128,9 @@ const EnvironmentSelector: React.FC<Props> = ({ disabled = false, className }) =
 							.slice(0, 2) || 'UN'}
 					</span>
 					<div className={cn('text-start min-w-0', sidebarOpen ? '' : 'hidden')}>
-						<p className='font-medium text-[16px] leading-snug truncate'>{user?.tenant?.name || 'Unknown'}</p>
+						<p className='font-medium text-[16px] leading-snug truncate'>
+							{user?.tenant?.name?.trim().toLowerCase() === 'plaqad' ? 'Plaqad BSP' : user?.tenant?.name || 'Plaqad BSP'}
+						</p>
 					</div>
 				</div>
 			</div>

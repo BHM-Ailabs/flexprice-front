@@ -243,7 +243,7 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 				<div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
 					<h3 className='text-sm font-medium text-blue-800 mb-3'>Webhook configuration</h3>
 					<p className='text-xs text-blue-700 mb-4'>
-						In Zoho Books, create Invoice and Contact webhooks and set this URL on each. Use the same secret here and in Zoho so Flexprice
+						In Zoho Books, create Invoice and Contact webhooks and set this URL on each. Use the same secret here and in Zoho so Plaqad BSP
 						can verify <code className='text-xs bg-white/80 px-1 rounded'>X-Zoho-Webhook-Signature</code>.
 					</p>
 					<div className='mb-4'>
@@ -277,7 +277,7 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 						description={
 							connection
 								? 'Stored encrypted. Leave blank to keep the current secret when updating.'
-								: 'Required. Must match the secret in Zoho Books so Flexprice can verify X-Zoho-Webhook-Signature. Stored encrypted with your connection.'
+								: 'Required. Must match the secret in Zoho Books so Plaqad BSP can verify X-Zoho-Webhook-Signature. Stored encrypted with your connection.'
 						}
 					/>
 				</div>

@@ -256,7 +256,7 @@ const ChargebeeConnectionDrawer: FC<ChargebeeConnectionDrawerProps> = ({ isOpen,
 				{!connection && (
 					<Input
 						label='Site'
-						placeholder='e.g., flexpriceio-test'
+						placeholder='e.g., my-company-test'
 						value={formData.site}
 						onChange={(value) => handleChange('site', value)}
 						error={errors.site}
@@ -267,7 +267,7 @@ const ChargebeeConnectionDrawer: FC<ChargebeeConnectionDrawerProps> = ({ isOpen,
 				{/* Sync Configuration Section */}
 				<div className='p-4 bg-gray-50 border border-gray-200 rounded-lg'>
 					<h3 className='text-sm font-medium text-gray-800 mb-3'>Sync Configuration</h3>
-					<p className='text-xs text-gray-600 mb-4'>Configure what data to sync between Chargebee and Flexprice</p>
+					<p className='text-xs text-gray-600 mb-4'>Configure what data to sync between Chargebee and Plaqad BSP</p>
 
 					<div className='space-y-4'>
 						{/* Invoices */}

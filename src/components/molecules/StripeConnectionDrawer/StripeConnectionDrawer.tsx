@@ -246,8 +246,8 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 						<div>
 							<h3 className='text-sm font-medium text-gray-900'>Stripe API keys</h3>
 							<p className='mt-1 text-xs text-gray-600'>
-								This {activeEnvironment?.type ?? 'selected'} FlexPrice environment requires {stripeMode ? `${stripeMode}-mode` : 'matching'}{' '}
-								keys.
+								This {activeEnvironment?.type ?? 'selected'} Plaqad BSP environment requires{' '}
+								{stripeMode ? `${stripeMode}-mode` : 'matching'} keys.
 							</p>
 						</div>
 						<Input
@@ -269,7 +269,7 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 							onChange={(value) => handleChange('secret_key', value)}
 							error={errors.secret_key}
 							autoComplete='new-password'
-							description='Prefer a restricted key (rk_) with only the permissions FlexPrice needs. This value is never shown again.'
+							description='Prefer a restricted key (rk_) with only the permissions Plaqad BSP needs. This value is never shown again.'
 						/>
 					</div>
 				)}
@@ -277,7 +277,7 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 				{/* Sync Configuration Section */}
 				<div className='p-4 bg-gray-50 border border-gray-200 rounded-lg'>
 					<h3 className='text-sm font-medium text-gray-800 mb-3'>Sync Configuration</h3>
-					<p className='text-xs text-gray-600 mb-4'>Configure what data to sync between Stripe and Flexprice</p>
+					<p className='text-xs text-gray-600 mb-4'>Configure what data to sync between Stripe and Plaqad BSP</p>
 
 					<div className='space-y-4'>
 						{/* Plans */}
@@ -328,7 +328,7 @@ const StripeConnectionDrawer: FC<StripeConnectionDrawerProps> = ({ isOpen, onOpe
 								onChange={(value) => handleChange('webhook_secret', value)}
 								error={errors.webhook_secret}
 								autoComplete='new-password'
-								description='Copy the whsec_ signing secret after creating this endpoint in Stripe. FlexPrice uses it to verify every event.'
+								description='Copy the whsec_ signing secret after creating this endpoint in Stripe. Plaqad BSP uses it to verify every event.'
 							/>
 						</div>
 					)}

@@ -59,7 +59,7 @@ const ResendVerification = () => {
 							<img src='/assets/svg/query.svg' alt='Email' className='h-10 w-10' />
 						</div>
 						<h2 className='mt-6 text-2xl font-bold text-gray-900'>Please check your email!</h2>
-						<p className='mt-2 text-gray-600'>Thanks for registering for an account on Flexprice! We've sent a confirmation email to:</p>
+						<p className='mt-2 text-gray-600'>Thanks for registering for an account on Plaqad BSP! We've sent a confirmation email to:</p>
 						<p className='mt-1 font-medium text-gray-800'>{resendSuccess ? email : userEmail}</p>
 						<p className='mt-4 text-sm text-gray-600'>
 							Click on the link in the email to verify your account. If you don't see it, check your spam folder.
@@ -91,7 +91,7 @@ const ResendVerification = () => {
 			<div className='w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg'>
 				<div className='text-center'>
 					<div className='mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-50'>
-						<img src='/ic_rounded_flexprice.svg' alt='Flexprice Logo' className='h-10 w-10' />
+						<img src='/plaqad-bsp.svg' alt='Plaqad BSP Logo' className='h-10 w-10' />
 					</div>
 					<h2 className='mt-6 text-2xl font-bold text-gray-900'>Resend Verification Email</h2>
 					<p className='mt-2 text-gray-600'>Enter your email address and we'll send you a new verification link.</p>

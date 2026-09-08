@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import supabase from '@/core/services/supbase/config';
 import { SupabaseClient } from '@supabase/supabase-js';
-import flexpriceLogo from '../../../assets/comicon.png';
+const flexpriceLogo = '/plaqad-bsp.svg';
 
 const EmailVerification = () => {
 	const navigate = useNavigate();
@@ -60,7 +60,7 @@ const EmailVerification = () => {
 			<div className='absolute inset-0 bg-white/30' aria-hidden />
 			<div className='relative w-full max-w-[480px] rounded-2xl bg-white p-8 shadow-lg'>
 				<div className='mb-6 flex justify-center'>
-					<img src={flexpriceLogo} alt='Flexprice' className='h-12' />
+					<img src={flexpriceLogo} alt='Plaqad BSP' className='h-12' />
 				</div>
 
 				<h2 className='text-center text-2xl font-semibold text-zinc-900'>

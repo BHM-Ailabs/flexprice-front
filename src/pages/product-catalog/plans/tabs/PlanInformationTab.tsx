@@ -138,7 +138,7 @@ const PlanInformationTab = () => {
 								},
 								{ label: 'Product pages', value: websiteProducts },
 								{ label: 'Summary', value: websiteSettings.summary || 'Uses plan description' },
-								{ label: 'Price label', value: websiteSettings.priceLabel || 'Uses active FlexPrice price' },
+								{ label: 'Price label', value: websiteSettings.priceLabel || 'Uses active Plaqad BSP price' },
 								{
 									label: 'Feature highlights',
 									value: websiteSettings.features.length ? websiteSettings.features.join(', ') : 'Uses linked entitlements',

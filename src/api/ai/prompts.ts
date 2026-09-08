@@ -4,14 +4,14 @@ import { PRICING_TEMPLATES } from './templates';
 // System prompt — sent to Flexprice /ai/pricing/parse-gemini (Gemini on the server)
 // ============================================
 
-export const SYSTEM_PROMPT = `You are a pricing architect for Flexprice, a usage-based billing platform.
+export const SYSTEM_PROMPT = `You are a pricing architect for Plaqad BSP, a usage-based billing platform.
 Convert the user's pricing description into the exact JSON schema. Return ONLY valid JSON — no markdown, no commentary.
 
 ## Features
 - type "metered": usage tracked per event (voice minutes, tokens, API calls, searches, exports).
 - type "static": on/off capability or seat count.
 - key: snake_case lookup key (e.g. "voice_minutes", "input_tokens", "contact_search").
-- meter_event_name: exact event name sent to the Flexprice events API. Dots OK (e.g. "call.minutes").
+- meter_event_name: exact event name sent to the Plaqad BSP events API. Dots OK (e.g. "call.minutes").
   Defaults to key if omitted.
 - aggregation + aggregation_field:
   - "count": each event = 1 unit (API calls, searches, exports, messages counted individually).
@@ -274,7 +274,7 @@ ${JSON.stringify(tpl.schema, null, 2)}`;
 	// No specific template match — give a brief pattern summary so the LLM understands conventions
 	return `${userPrompt}
 
-## Flexprice pattern examples (for structural reference only)
+## Plaqad BSP pattern examples (for structural reference only)
 - Hybrid flat+overage (Cursor-style): flat monthly price + usage_charges with overage rates; entitlements only for included quantities (hard caps).
 - Credit pool (Apollo-style): flat monthly price + credit_grants + usage_charges at credit costs per action; entitlements: [].
 - Per-model token (Gemini-style): one feature per model×direction, package billing per 1M tokens; entitlements: [].

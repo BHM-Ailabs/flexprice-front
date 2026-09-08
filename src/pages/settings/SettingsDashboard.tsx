@@ -152,7 +152,7 @@ function MembersSection() {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `flexprice-credentials-${addedUserEmail.replace(/@.*/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'user'}.csv`;
+		a.download = `plaqad-bsp-credentials-${addedUserEmail.replace(/@.*/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'user'}.csv`;
 		a.click();
 		URL.revokeObjectURL(url);
 		toast.success('Credentials downloaded.');

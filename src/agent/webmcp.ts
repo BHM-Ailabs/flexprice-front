@@ -14,10 +14,10 @@ export function registerWebMCPTools() {
 			{
 				name: 'get_flexprice_app_info',
 				description:
-					'Returns metadata about the Flexprice dashboard the user is currently viewing: product name, build version, and canonical documentation and API URLs.',
+					'Returns metadata about the Plaqad BSP dashboard the user is currently viewing: product name, build version, and canonical documentation and API URLs.',
 				inputSchema: { type: 'object', properties: {}, additionalProperties: false },
 				execute: async () => ({
-					name: 'Flexprice Dashboard',
+					name: 'Plaqad BSP Dashboard',
 					version: __APP_VERSION__,
 					docs: 'https://docs.flexprice.io',
 					api: 'https://api.cloud.flexprice.io',

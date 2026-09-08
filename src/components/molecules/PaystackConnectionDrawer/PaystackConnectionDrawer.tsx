@@ -165,14 +165,14 @@ const PaystackConnectionDrawer: FC<PaystackConnectionDrawerProps> = ({ isOpen, o
 					description={
 						connection
 							? 'Leave blank to keep the current encrypted key'
-							: 'Stored encrypted and used only by the FlexPrice backend to initialize and verify transactions'
+							: 'Stored encrypted and used only by the Plaqad BSP backend to initialize and verify transactions'
 					}
 				/>
 
 				<div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
 					<h3 className='text-sm font-medium text-blue-800 mb-2'>Webhook Configuration</h3>
 					<p className='text-xs text-blue-700 mb-3'>
-						Set this URL as the Paystack webhook endpoint. FlexPrice validates the x-paystack-signature header and verifies the transaction
+						Set this URL as the Paystack webhook endpoint. Plaqad BSP validates the x-paystack-signature header and verifies the transaction
 						before recording success.
 					</p>
 					<div className='flex items-center gap-2 p-2 bg-white border border-blue-200 rounded-md'>

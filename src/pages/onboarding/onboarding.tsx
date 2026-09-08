@@ -15,7 +15,7 @@ export interface TutorialItem {
 const tutorials: TutorialItem[] = [
 	{
 		title: 'Getting Started',
-		description: 'Learn the basics of Flexprice in 5 minutes',
+		description: 'Learn the basics of Plaqad BSP in 5 minutes',
 		onClick: () => window.open('https://docs.flexprice.io', '_blank'),
 	},
 	{
@@ -40,7 +40,7 @@ const tutorials: TutorialItem[] = [
 	},
 	{
 		title: 'Self-Hosting & Configuration',
-		description: 'Set up and deploy Flexprice on your own infrastructure',
+		description: 'Set up and deploy Plaqad BSP on your own infrastructure',
 		onClick: () => window.open('https://docs.flexprice.io/guides/self-hosted/guide', '_blank'),
 	},
 ];
@@ -92,7 +92,7 @@ const OnboardingPage = () => {
 					<div className='flex-1 w-[70%] flex-grow rounded bg-[#dde1eb] p-8'>
 						<div className='flex justify-between items-start w-full'>
 							<div className='w-[60%]'>
-								<h1 className='mb-2 text-xl font-semibold tracking-tight'>Welcome to Flexprice!</h1>
+								<h1 className='mb-2 text-xl font-semibold tracking-tight'>Welcome to Plaqad BSP!</h1>
 								<p className='mb-6 text-sm text-slate-800'>Let's get your pricing and billing started!</p>
 								<div className='flex gap-4'>
 									<Button

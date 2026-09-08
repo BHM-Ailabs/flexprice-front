@@ -21,7 +21,7 @@ const Exports = () => {
 	const exportProviders: ExportProvider[] = [
 		{
 			name: 'Amazon S3',
-			description: 'Export your Flexprice data to Amazon S3 for data warehousing, analytics, and backup purposes.',
+			description: 'Export your Plaqad BSP data to Amazon S3 for data warehousing, analytics, and backup purposes.',
 			icon: Cloud,
 			logo: 'https://upload.wikimedia.org/wikipedia/commons/b/bc/Amazon-S3-Logo.svg',
 			tags: ['Storage', 'Data Warehouse', 'Analytics'],
@@ -52,8 +52,8 @@ const Exports = () => {
 				<FormHeader title='Overview' variant='sub-header' />
 				<div className='card space-y-4'>
 					<p className='text-gray-600'>
-						Export your Flexprice data to external storage systems for data warehousing, analytics, and backup purposes. Configure automated
-						exports with flexible scheduling and secure data transfer.
+						Export your Plaqad BSP data to external storage systems for data warehousing, analytics, and backup purposes. Configure
+						automated exports with flexible scheduling and secure data transfer.
 					</p>
 					<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
 						<div className='flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white'>

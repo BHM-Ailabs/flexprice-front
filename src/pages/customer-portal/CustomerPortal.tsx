@@ -165,11 +165,11 @@ const CustomerPortalInner = () => {
 					<p className='text-xs text-zinc-400'>
 						Powered by{' '}
 						<a
-							href='https://flexprice.io'
+							href='https://plaqad.com'
 							target='_blank'
 							rel='noopener noreferrer'
 							className='text-zinc-500 hover:text-zinc-700 transition-colors'>
-							Flexprice
+							Plaqad BSP
 						</a>
 					</p>
 				</div>

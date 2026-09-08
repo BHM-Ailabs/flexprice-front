@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import LoginForm from './LoginForm';
-import flexpriceLogo from '../../../assets/comicon.png';
+const flexpriceLogo = '/plaqad-bsp.svg';
 import SignupForm from './SignupForm';
 import ForgotPasswordForm from './ForgotPasswordForm';
 import ResetPasswordForm from './ResetPasswordForm';
@@ -88,30 +88,17 @@ const AuthPage: React.FC = () => {
 		<div className='flex w-full min-h-screen bg-white page !p-0 !flex-row'>
 			{/* Left side - Auth Form */}
 			<div className='w-[45%] flex flex-col'>
-				{/* Slack Community Strip - Absolute Top */}
-				<a
-					href='https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ'
-					target='_blank'
-					rel='noopener noreferrer'
-					className='w-full h-[48px] flex items-center justify-center gap-2.5 cursor-pointer border-y border-gray-100 hover:opacity-90 transition-opacity'
-					style={{
-						background: 'linear-gradient(to right, #F7F7F7, #EDEDED, #F7F7F7)',
-					}}>
-					<span className='text-[15px] font-medium text-gray-700'>Join the Flexprice Community on Slack</span>
-					<img src={'/assets/logo/slack-logo.png'} alt='Slack Logo' className='h-4 w-auto' />
-				</a>
-
 				{/* Form Container */}
 				<div className='flex-1 flex justify-center items-center pt-[10px]'>
 					<div className='flex flex-col justify-center max-w-xl w-[55%] mx-auto'>
 						<div className='flex justify-center mb-4'>
-							<img src={flexpriceLogo} alt='Flexprice Logo' className='h-12' />
+							<img src={flexpriceLogo} alt='Plaqad BSP Logo' className='h-12' />
 						</div>
 
 						{currentTab === AuthTab.SIGNUP && (
 							<>
 								<h2 className='text-3xl font-medium text-center text-gray-800 mb-2'>Create your account</h2>
-								<p className='text-center text-gray-600 mb-10'>Sign up to start using Flexprice.</p>
+								<p className='text-center text-gray-600 mb-10'>Sign up to start using Plaqad BSP.</p>
 								<div className='mb-6'>
 									<RegionSelector />
 								</div>

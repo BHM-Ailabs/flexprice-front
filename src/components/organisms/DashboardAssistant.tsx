@@ -73,14 +73,14 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 				<button
 					type='button'
 					className='fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-md hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2'
-					aria-label='Ask FlexPrice'>
+					aria-label='Ask Plaqad BSP'>
 					<MessageSquare size={17} />
-					Ask FlexPrice
+					Ask Plaqad BSP
 				</button>
 			</SheetTrigger>
 			<SheetContent className='flex w-[calc(100vw-2.5rem)] flex-col sm:w-full sm:max-w-lg' aria-describedby='assistant-description'>
 				<SheetHeader className='pr-8'>
-					<SheetTitle>Ask FlexPrice</SheetTitle>
+					<SheetTitle>Ask Plaqad BSP</SheetTitle>
 					<SheetDescription id='assistant-description'>Plans, revenue, and billing records in {environment}.</SheetDescription>
 				</SheetHeader>
 				<div className='flex items-center justify-between border-b pb-3 text-xs text-gray-500'>
@@ -123,7 +123,7 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 					)}
 					{turns.map((turn, index) => (
 						<article key={index} className={turn.role === 'user' ? 'ml-8 rounded-xl bg-gray-100 p-3' : 'space-y-3'}>
-							<p className='mb-1 text-xs font-medium text-gray-500'>{turn.role === 'user' ? 'You' : 'FlexPrice'}</p>
+							<p className='mb-1 text-xs font-medium text-gray-500'>{turn.role === 'user' ? 'You' : 'Plaqad BSP'}</p>
 							<div className='whitespace-pre-wrap break-words text-sm leading-6'>{turn.content}</div>
 							{!!turn.sources?.length && (
 								<div className='space-y-1 border-l-2 pl-3'>
@@ -173,7 +173,7 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 					<AIAttachments files={files} disabled={mutation.isPending || !environmentId} />
 					<div className='flex items-end gap-2 rounded-lg border p-2'>
 						<textarea
-							aria-label='Question for FlexPrice'
+							aria-label='Question for Plaqad BSP'
 							rows={2}
 							maxLength={8000}
 							value={draft}

@@ -181,7 +181,7 @@ const S3ConnectionDrawer: FC<S3ConnectionDrawerProps> = ({ isOpen, onOpenChange,
 						<div className='flex items-center justify-between p-4 border rounded-lg bg-gray-50'>
 							<div className='flex-1'>
 								<label htmlFor='flexprice-managed' className='text-sm font-medium text-gray-900 cursor-pointer'>
-									Flexprice Managed Storage
+									Plaqad BSP Managed Storage
 								</label>
 								<p className='text-xs text-gray-500 mt-1'>No AWS configuration required</p>
 							</div>
@@ -232,7 +232,7 @@ const S3ConnectionDrawer: FC<S3ConnectionDrawerProps> = ({ isOpen, onOpenChange,
 					<h4 className='font-medium text-blue-900 mb-2'>Security Note</h4>
 					<p className='text-sm text-blue-800'>
 						{formData.is_flexprice_managed
-							? 'Your data will be stored securely in Flexprice-managed S3 buckets. Files are encrypted at rest and accessible via secure download links.'
+							? 'Your data will be stored securely in Plaqad BSP-managed S3 buckets. Files are encrypted at rest and accessible via secure download links.'
 							: 'Your AWS credentials are encrypted and stored securely. We recommend using IAM roles with minimal required permissions for S3 access.'}
 					</p>
 				</div>

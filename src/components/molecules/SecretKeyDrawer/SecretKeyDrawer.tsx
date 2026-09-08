@@ -211,7 +211,7 @@ const SecretKeyDrawer: FC<Props> = ({ isOpen, onOpenChange }) => {
 				isOpen={isOpen}
 				onOpenChange={onOpenChange}
 				title='Create API Key'
-				description='Create a new API key to access the Flexprice API'>
+				description='Create a new API key to access the Plaqad BSP API'>
 				<div className='space-y-4'>
 					<Spacer className='!h-4' />
 					<Input placeholder='Secret Key' value={formData.name} label='Name' onChange={(value) => handleChange('name', value)} />

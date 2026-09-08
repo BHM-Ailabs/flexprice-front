@@ -10,7 +10,7 @@ import { TenantMetadataKey, type Tenant } from '@/models';
 import useUser from '@/hooks/useUser';
 import { refetchQueries } from '@/core/services/tanstack/ReactQueryProvider';
 import { ServerError } from '@/core/axios/types';
-import flexpriceLogo from '../../../assets/comicon.png';
+const flexpriceLogo = '/plaqad-bsp.svg';
 
 /** URL check without validator dep: optional empty; no spaces; http(s) with host containing a dot (TLD). */
 const isValidUrl = (s: string): boolean => {
@@ -226,9 +226,9 @@ const OnboardingTenant = () => {
 			<div className='absolute inset-0 bg-white/30' aria-hidden />
 			<div className='relative my-8 w-full max-w-[480px] rounded-2xl bg-white p-8 shadow-lg'>
 				<div className='mb-6 flex justify-center'>
-					<img src={flexpriceLogo} alt='Flexprice' className='h-12' />
+					<img src={flexpriceLogo} alt='Plaqad BSP' className='h-12' />
 				</div>
-				<h1 className='text-center text-2xl font-semibold text-zinc-900'>Welcome to Flexprice</h1>
+				<h1 className='text-center text-2xl font-semibold text-zinc-900'>Welcome to Plaqad BSP</h1>
 				<p className='mt-2 text-center text-sm text-zinc-500'>
 					Let&apos;s finish setting up your workspace, complete this form to get started.
 				</p>
@@ -289,7 +289,7 @@ const OnboardingTenant = () => {
 						disabled={isPending}
 					/>
 					<Select
-						label='What pricing model are you choosing for Flexprice?'
+						label='What pricing model are you choosing for Plaqad BSP?'
 						options={pricingTypeOptions}
 						value={pricingType}
 						onChange={(v) => setPricingType(v)}

@@ -129,7 +129,7 @@ const WebsitePublishingSection = ({ metadata = {}, onChange }: WebsitePublishing
 					<div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
 						<Input
 							label='Price label override'
-							description='Optional. FlexPrice pricing is used automatically when blank.'
+							description='Optional. Plaqad BSP pricing is used automatically when blank.'
 							placeholder='$30 / month'
 							value={settings.priceLabel}
 							onChange={(priceLabel) => update({ priceLabel })}

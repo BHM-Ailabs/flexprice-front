@@ -274,7 +274,7 @@ const FeatureDetails = () => {
 	const snippets: ApiDocsSnippet[] = [
 		{
 			label: 'Ingest an event',
-			description: 'Ingest an event into FlexPrice',
+			description: 'Ingest an event into Plaqad BSP',
 			curl: curlCommand,
 		},
 	];

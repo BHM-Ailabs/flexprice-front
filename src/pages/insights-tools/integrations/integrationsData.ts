@@ -34,11 +34,11 @@ export const integrations: Integration[] = [
 		info: [
 			{
 				title: 'Overview',
-				description: ['The Flexprice Stripe app enables invoicing, tax collection, and payment via Stripe.'],
+				description: ['The Plaqad BSP Stripe app enables invoicing, tax collection, and payment via Stripe.'],
 			},
 			{
 				title: 'Stripe Invoicing',
-				description: ['Create and send invoices through Stripe Invoicing directly from Flexprice and automatically collect payments.'],
+				description: ['Create and send invoices through Stripe Invoicing directly from Plaqad BSP and automatically collect payments.'],
 			},
 			{
 				title: 'Automatic Tax Calculations',
@@ -66,12 +66,12 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'Create hosted Paystack checkout links from FlexPrice invoices and reconcile successful charges through signed webhooks.',
+					'Create hosted Paystack checkout links from Plaqad BSP invoices and reconcile successful charges through signed webhooks.',
 				],
 			},
 			{
 				title: 'Secure payment confirmation',
-				description: ['Webhook signatures and transaction details are verified server-side before FlexPrice marks a payment successful.'],
+				description: ['Webhook signatures and transaction details are verified server-side before Plaqad BSP marks a payment successful.'],
 			},
 		],
 	},
@@ -87,13 +87,13 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'The Flexprice Razorpay app enables invoicing, tax calculations, and payment collection directly through Razorpay. Integrate it seamlessly with Flexprice (or your billing engine) to streamline your payment workflows.',
+					'The Plaqad BSP Razorpay app enables invoicing, tax calculations, and payment collection directly through Razorpay. Integrate it seamlessly with Plaqad BSP (or your billing engine) to streamline your payment workflows.',
 				],
 			},
 			{
 				title: 'Razorpay Invoicing',
 				description: [
-					"Create and send invoices with a few clicks - right from Flexprice - using Razorpay's invoicing capabilities. Payment collection can be automated, reducing manual follow-ups.",
+					"Create and send invoices with a few clicks - right from Plaqad BSP - using Razorpay's invoicing capabilities. Payment collection can be automated, reducing manual follow-ups.",
 				],
 			},
 			{
@@ -115,7 +115,7 @@ export const integrations: Integration[] = [
 		name: 'Chargebee',
 		websiteUrl: 'https://chargebee.com',
 		docsUrl: 'https://docs.flexprice.io/integrations/chargebee/',
-		description: 'Sync invoices and charges/prices between Flexprice and Chargebee for seamless billing operations.',
+		description: 'Sync invoices and charges/prices between Plaqad BSP and Chargebee for seamless billing operations.',
 		logo: '/assets/logo/chargebee.png',
 		tags: ['Payments', 'Invoices'],
 		type: 'available',
@@ -123,19 +123,19 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'The Flexprice Chargebee app enables seamless synchronization of invoices and charges/prices between Flexprice and Chargebee. Integrate it to streamline your billing workflows.',
+					'The Plaqad BSP Chargebee app enables seamless synchronization of invoices and charges/prices between Plaqad BSP and Chargebee. Integrate it to streamline your billing workflows.',
 				],
 			},
 			{
 				title: 'Invoice Sync',
 				description: [
-					'Sync invoices from Flexprice to Chargebee, ensuring your billing system stays up to date with the latest invoice data.',
+					'Sync invoices from Plaqad BSP to Chargebee, ensuring your billing system stays up to date with the latest invoice data.',
 				],
 			},
 			{
 				title: 'Charge and Price Sync',
 				description: [
-					'Synchronize charges and prices between Flexprice and Chargebee to maintain consistency across your billing platform.',
+					'Synchronize charges and prices between Plaqad BSP and Chargebee to maintain consistency across your billing platform.',
 				],
 			},
 		],
@@ -151,20 +151,20 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'The Flexprice HubSpot app enables seamless syncing of deals, invoices, customers, and payments between HubSpot and Flexprice.',
+					'The Plaqad BSP HubSpot app enables seamless syncing of deals, invoices, customers, and payments between HubSpot and Plaqad BSP.',
 				],
 			},
 			{
 				title: 'Deal Line Items Sync',
-				description: ['Automatically sync deal line items from HubSpot to Flexprice, ensuring accurate revenue tracking and billing.'],
+				description: ['Automatically sync deal line items from HubSpot to Plaqad BSP, ensuring accurate revenue tracking and billing.'],
 			},
 			{
 				title: 'Invoice Sync',
-				description: ['Push invoices from Flexprice to HubSpot to keep your CRM up to date with billing information.'],
+				description: ['Push invoices from Plaqad BSP to HubSpot to keep your CRM up to date with billing information.'],
 			},
 			{
 				title: 'Customer Sync',
-				description: ['Sync customer data between HubSpot and Flexprice to maintain a single source of truth for customer information.'],
+				description: ['Sync customer data between HubSpot and Plaqad BSP to maintain a single source of truth for customer information.'],
 			},
 			{
 				title: 'Payments Sync',
@@ -172,7 +172,7 @@ export const integrations: Integration[] = [
 			},
 			{
 				title: 'Revenue Calculations on HubSpot',
-				description: ["Leverage HubSpot's reporting capabilities with accurate revenue data synced from Flexprice."],
+				description: ["Leverage HubSpot's reporting capabilities with accurate revenue data synced from Plaqad BSP."],
 			},
 		],
 	},
@@ -197,19 +197,21 @@ export const integrations: Integration[] = [
 		logo: 'https://www.zohowebstatic.com/sites/zweb/images/commonroot/zoho-logo-web.svg',
 		tags: ['Accounting', 'Invoices'],
 		type: 'available',
-		description: 'The Zoho Books integration lets you manage critical accounting tasks directly from Flexprice. ',
+		description: 'The Zoho Books integration lets you manage critical accounting tasks directly from Plaqad BSP. ',
 		info: [
 			{
 				title: 'Create Customer in Zoho Books',
-				description: ['Automatically create or update customers in Zoho Books whenever a new customer is added or modified in Flexprice.'],
+				description: ['Automatically create or update customers in Zoho Books whenever a new customer is added or modified in Plaqad BSP.'],
 			},
 			{
 				title: 'Create Invoice in Zoho Books',
-				description: ['Generate Zoho Books invoices seamlessly from Flexprice usage data or billing triggers, reducing manual work.'],
+				description: ['Generate Zoho Books invoices seamlessly from Plaqad BSP usage data or billing triggers, reducing manual work.'],
 			},
 			{
-				title: 'Transform Flexprice Invoice to Zoho Books Invoice',
-				description: ["Convert a Flexprice invoice object into Zoho Books' invoice format - streamlining data flow and ensuring accuracy."],
+				title: 'Transform Plaqad BSP Invoice to Zoho Books Invoice',
+				description: [
+					"Convert a Plaqad BSP invoice object into Zoho Books' invoice format - streamlining data flow and ensuring accuracy.",
+				],
 			},
 		],
 	},
@@ -217,7 +219,7 @@ export const integrations: Integration[] = [
 		name: 'QuickBooks',
 		websiteUrl: 'https://quickbooks.intuit.com',
 		docsUrl: 'https://docs.flexprice.io/integrations/quickbooks/',
-		description: 'Sync plans, customers, and invoices from Flexprice to QuickBooks Online for seamless accounting operations.',
+		description: 'Sync plans, customers, and invoices from Plaqad BSP to QuickBooks Online for seamless accounting operations.',
 		logo: '/assets/company-logo/quickbooks.svg',
 		tags: ['Accounting', 'Invoices'],
 		type: 'available',
@@ -225,13 +227,13 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'The Flexprice QuickBooks integration enables one-way sync from Flexprice to QuickBooks Online. Automatically sync plans, customers, and invoices to keep your accounting system up to date.',
+					'The Plaqad BSP QuickBooks integration enables one-way sync from Plaqad BSP to QuickBooks Online. Automatically sync plans, customers, and invoices to keep your accounting system up to date.',
 				],
 			},
 			{
 				title: 'Plan/Price Sync',
 				description: [
-					'Automatically create QuickBooks Items (Service type) when plans are created in Flexprice. Each price is mapped to a QuickBooks Item for accurate invoice line items.',
+					'Automatically create QuickBooks Items (Service type) when plans are created in Plaqad BSP. Each price is mapped to a QuickBooks Item for accurate invoice line items.',
 				],
 			},
 			{
@@ -243,7 +245,7 @@ export const integrations: Integration[] = [
 			{
 				title: 'Invoice Sync',
 				description: [
-					'Automatically sync invoices from Flexprice to QuickBooks Online. Invoice line items are mapped to QuickBooks Items, ensuring accurate accounting records.',
+					'Automatically sync invoices from Plaqad BSP to QuickBooks Online. Invoice line items are mapped to QuickBooks Items, ensuring accurate accounting records.',
 				],
 			},
 			{
@@ -265,13 +267,13 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'The Flexprice Nomod app enables invoicing and payment collection through Nomod payment links. Integrate it seamlessly with Flexprice to streamline your payment workflows.',
+					'The Plaqad BSP Nomod app enables invoicing and payment collection through Nomod payment links. Integrate it seamlessly with Plaqad BSP to streamline your payment workflows.',
 				],
 			},
 			{
 				title: 'Invoice Sync',
 				description: [
-					'Create and send invoices with payment links through Nomod directly from Flexprice. Payment collection can be automated through Nomod payment links.',
+					'Create and send invoices with payment links through Nomod directly from Plaqad BSP. Payment collection can be automated through Nomod payment links.',
 				],
 			},
 			{
@@ -299,13 +301,13 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'The Flexprice Moyasar app enables invoicing and payment collection through Moyasar payment gateway. Integrate it seamlessly with Flexprice to streamline your payment workflows.',
+					'The Plaqad BSP Moyasar app enables invoicing and payment collection through Moyasar payment gateway. Integrate it seamlessly with Plaqad BSP to streamline your payment workflows.',
 				],
 			},
 			{
 				title: 'Invoice Sync',
 				description: [
-					'Create and send invoices through Moyasar directly from Flexprice. Payment collection can be automated through Moyasar payment gateway.',
+					'Create and send invoices through Moyasar directly from Plaqad BSP. Payment collection can be automated through Moyasar payment gateway.',
 				],
 			},
 			{
@@ -332,13 +334,13 @@ export const integrations: Integration[] = [
 			{
 				title: 'Overview',
 				description: [
-					'The Flexprice Paddle app enables invoicing and payment collection through Paddle payment gateway. Integrate it seamlessly with Flexprice to streamline your payment workflows.',
+					'The Plaqad BSP Paddle app enables invoicing and payment collection through Paddle payment gateway. Integrate it seamlessly with Plaqad BSP to streamline your payment workflows.',
 				],
 			},
 			{
 				title: 'Invoice Sync',
 				description: [
-					'Create and send invoices through Paddle directly from Flexprice. Payment collection can be automated through Paddle payment gateway.',
+					'Create and send invoices through Paddle directly from Plaqad BSP. Payment collection can be automated through Paddle payment gateway.',
 				],
 			},
 			{

@@ -330,9 +330,9 @@ const ExportDrawer: FC<ExportDrawerProps> = ({ isOpen, onOpenChange, connectionI
 				{/* Flexprice Managed Info */}
 				{isFlexpriceManaged && (
 					<div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-						<h4 className='font-medium text-blue-900 mb-2'>Flexprice Managed Storage</h4>
+						<h4 className='font-medium text-blue-900 mb-2'>Plaqad BSP Managed Storage</h4>
 						<p className='text-sm text-blue-800'>
-							Your exports will be automatically stored in Flexprice-managed S3 buckets. No additional export configuration required.
+							Your exports will be automatically stored in Plaqad BSP-managed S3 buckets. No additional export configuration required.
 							Download the exported files from the respective task runs table.
 						</p>
 					</div>
