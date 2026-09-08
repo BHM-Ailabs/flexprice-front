@@ -1,3 +1,5 @@
+import AIAttachments from '@/components/organisms/AIAttachments';
+import { useAIAttachments } from '@/hooks/useAIAttachments';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router';
@@ -27,6 +29,7 @@ export default function DashboardAssistant() {
 }
 export function AssistantPanel({ environment, environmentId }: { environment: string; environmentId: string }) {
 	const [open, setOpen] = useState(false);
+	const files = useAIAttachments();
 	const [draft, setDraft] = useState('');
 	const [turns, setTurns] = useState<Turn[]>([]);
 	const [error, setError] = useState('');
@@ -39,14 +42,15 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 	const mutation = useMutation({
 		mutationFn: async (messages: AssistantMessage[]) => {
 			abortRef.current = new AbortController();
-			const result = await askAssistant(messages, abortRef.current.signal);
+			const result = await askAssistant(messages, abortRef.current.signal, files.ids);
 			if (result.environment_id !== environmentId || EnvironmentApi.getActiveEnvironmentId() !== environmentId)
 				throw new Error('Environment changed. Ask your question again.');
 			return result;
 		},
 	});
 	async function send(text: string) {
-		if (!text.trim() || mutation.isPending || !environmentId) return;
+		if ((!text.trim() && !files.ids.length) || files.blocked || mutation.isPending || !environmentId) return;
+		text = text.trim() || 'Analyze the attached files and summarize the key findings.';
 		setError('');
 		const messages: Turn[] = [...turns, { role: 'user', content: text.trim() }];
 		setTurns(messages);
@@ -86,6 +90,7 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 						disabled={mutation.isPending}
 						onClick={() => {
 							setTurns([]);
+							files.clear();
 							setError('');
 							setDraft('');
 						}}
@@ -108,7 +113,7 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 										key={text}
 										type='button'
 										onClick={() => void send(text)}
-										disabled={!environmentId}
+										disabled={!environmentId || files.blocked}
 										className='block w-full rounded-lg border p-3 text-left text-sm hover:bg-gray-50 disabled:opacity-50'>
 										{text}
 									</button>
@@ -123,8 +128,12 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 							{!!turn.sources?.length && (
 								<div className='space-y-1 border-l-2 pl-3'>
 									<p className='text-xs text-gray-500'>Sources</p>
-									{turn.sources.map(
-										(source, i) =>
+									{turn.sources.map((source, i) =>
+										source.attachment_id ? (
+											<span key={i} className='block text-xs text-gray-600' title={`Retrieved ${source.retrieved_at}`}>
+												{source.label}
+											</span>
+										) : (
 											source.path.startsWith('/') &&
 											!source.path.startsWith('//') && (
 												<Link
@@ -135,7 +144,8 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 													title={`Retrieved ${source.retrieved_at}`}>
 													{source.label}
 												</Link>
-											),
+											)
+										),
 									)}
 								</div>
 							)}
@@ -160,6 +170,7 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 						event.preventDefault();
 						void send(draft);
 					}}>
+					<AIAttachments files={files} disabled={mutation.isPending || !environmentId} />
 					<div className='flex items-end gap-2 rounded-lg border p-2'>
 						<textarea
 							aria-label='Question for FlexPrice'
@@ -178,7 +189,7 @@ export function AssistantPanel({ environment, environmentId }: { environment: st
 						/>
 						<button
 							type='submit'
-							disabled={mutation.isPending || !draft.trim() || !environmentId}
+							disabled={mutation.isPending || files.blocked || (!draft.trim() && !files.ids.length) || !environmentId}
 							aria-label='Send question'
 							className='rounded-md bg-gray-900 p-2 text-white disabled:opacity-40'>
 							<ArrowUp size={18} />

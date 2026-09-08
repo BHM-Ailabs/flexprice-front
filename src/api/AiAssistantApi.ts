@@ -4,6 +4,7 @@ export interface AssistantMessage {
 	content: string;
 }
 export interface AssistantSource {
+	attachment_id?: string;
 	label: string;
 	path: string;
 	retrieved_at: string;
@@ -13,5 +14,5 @@ export interface AssistantAnswer {
 	sources: AssistantSource[];
 	environment_id: string;
 }
-export const askAssistant = (messages: AssistantMessage[], signal?: AbortSignal) =>
-	AxiosClient.post<AssistantAnswer>('/ai/assistant', { messages }, { signal });
+export const askAssistant = (messages: AssistantMessage[], signal?: AbortSignal, attachment_ids: string[] = []) =>
+	AxiosClient.post<AssistantAnswer>('/ai/assistant', { messages, attachment_ids }, { signal });

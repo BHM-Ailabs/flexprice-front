@@ -4,6 +4,7 @@ import type { PricingSchema } from '@/api/ai/types';
 export type GeminiResponseSchema = Record<string, unknown>;
 
 export interface ParseGeminiPricingRequest {
+	attachment_ids?: string[];
 	systemPrompt: string;
 	userPrompt: string;
 	responseSchema: GeminiResponseSchema;

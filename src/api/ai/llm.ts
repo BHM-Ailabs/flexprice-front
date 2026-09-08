@@ -61,11 +61,12 @@ function parseErrMessage(err: unknown): string {
  * Parse a plain-English pricing description into a PricingSchema via Flexprice
  * POST /ai/pricing/parse (same session as other API calls).
  */
-export async function parsePricingWithLLM(userPrompt: string): Promise<PricingSchema> {
+export async function parsePricingWithLLM(userPrompt: string, attachmentIDs: string[] = []): Promise<PricingSchema> {
 	const enrichedPrompt = buildContextualPrompt(userPrompt);
 	try {
 		const raw = await AiPricingParseApi.parseGemini({
 			systemPrompt: SYSTEM_PROMPT,
+			attachment_ids: attachmentIDs,
 			userPrompt: enrichedPrompt,
 			responseSchema: GEMINI_PRICING_SCHEMA as Record<string, unknown>,
 		});

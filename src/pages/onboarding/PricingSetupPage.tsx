@@ -1,3 +1,7 @@
+import AIAttachments from '@/components/organisms/AIAttachments';
+import { useAIAttachments } from '@/hooks/useAIAttachments';
+import { useEnvironment } from '@/hooks/useEnvironment';
+import useUser from '@/hooks/useUser';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import toast from 'react-hot-toast';
@@ -53,6 +57,12 @@ type Phase = 'input' | 'preview' | 'creating';
 // ============================================
 
 const PricingSetupPage = () => {
+	const { activeEnvironment } = useEnvironment();
+	const { user } = useUser();
+	return <PricingSetupContent key={`${user?.id}:${user?.tenant?.id}:${activeEnvironment?.id}`} />;
+};
+const PricingSetupContent = () => {
+	const files = useAIAttachments();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [selectedTemplate, setSelectedTemplate] = useState<TemplateDefinition | null>(null);
@@ -150,13 +160,14 @@ const PricingSetupPage = () => {
 
 	const handleParseAndPreview = async () => {
 		const raw = promptRef.current?.value ?? lastPromptDraftRef.current;
-		const promptText = raw.trim();
+		const promptText = raw.trim() || (files.ids.length ? 'Create a pricing preview from the attached files.' : '');
+		if (files.blocked) return;
 		if (!promptText) {
 			toast.error('Please enter a pricing description first.');
 			return;
 		}
 		lastPromptDraftRef.current = raw;
-		if (selectedTemplate) {
+		if (selectedTemplate && !files.items.length) {
 			setIsParsing(true);
 			try {
 				setPreviewEnteredViaTemplate(true);
@@ -175,7 +186,7 @@ const PricingSetupPage = () => {
 		try {
 			setPreviewEnteredViaTemplate(false);
 			skipNextPreviewShimmerRef.current = false;
-			const parsed = await parsePricingWithLLM(promptText);
+			const parsed = await parsePricingWithLLM(promptText, files.ids);
 			setSchema(parsed);
 			setFadePreviewShimmer(false);
 			setShowPreviewShimmer(true);
@@ -285,7 +296,7 @@ const PricingSetupPage = () => {
 						{/* Header */}
 						<div className='mb-8 text-center'>
 							<h1 className='text-[2rem] font-medium tracking-tight text-gray-900'>Set up your pricing</h1>
-							<p className='mt-2.5 text-[15px] text-gray-600'>Describe your pricing model, or start from a template.</p>
+							<p className='mt-2.5 text-[15px] text-gray-600'>Describe your pricing, attach a price list, or start from a template.</p>
 						</div>
 
 						{/* Template badge */}
@@ -328,11 +339,14 @@ const PricingSetupPage = () => {
 								disabled={isParsing}
 								className='relative z-10 w-full resize-none rounded-t-2xl bg-transparent px-5 pt-3 text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-60'
 							/>
+							<div className='border-t border-gray-100 px-4 py-3'>
+								<AIAttachments files={files} disabled={isParsing} />
+							</div>
 							<div className='flex items-center justify-end border-t border-gray-100 px-4 py-3'>
 								<button
 									type='button'
 									onClick={handleParseAndPreview}
-									disabled={!hasPromptText || isParsing}
+									disabled={(!hasPromptText && !files.ids.length) || files.blocked || isParsing}
 									className={cn(
 										'flex h-9 w-9 items-center justify-center rounded-xl bg-[#092E44] text-white transition-all',
 										'hover:opacity-90 active:scale-95',
