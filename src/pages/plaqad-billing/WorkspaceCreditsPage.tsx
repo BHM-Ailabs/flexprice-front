@@ -62,8 +62,8 @@ function CreditEvidence({ entry }: { entry: WorkspaceCreditEntry }) {
 						<p>{creditPaymentAmount(evidence.payment.amountMinor, evidence.payment.currency)} paid</p>
 						{evidence.payment.fxRateMicro !== null && (
 							<p>
-								Recorded FX rate: {precise(evidence.payment.fxRateMicro / 1_000_000)}
-								{evidence.payment.fxSpreadBps !== null ? ` · ${precise(evidence.payment.fxSpreadBps / 100)}% spread` : ''}
+								Recorded FX rate: {evidence.payment.currency} {precise(evidence.payment.fxRateMicro / 1_000_000)} per USD
+								{evidence.payment.fxSpreadBps !== null ? ` (includes ${precise(evidence.payment.fxSpreadBps / 100)}% spread)` : ''}
 							</p>
 						)}
 						{evidence.payment.fxSource && (

@@ -243,6 +243,43 @@ describe('workspace credits read model', () => {
 		expect(screen.queryByText(/0 units/)).not.toBeInTheDocument();
 		expect(screen.queryByText(/Recorded rate:/)).not.toBeInTheDocument();
 	});
+	it('shows the original payment amount and labels the stored FX rate per USD', async () => {
+		vi.mocked(billingGet).mockResolvedValue({
+			...response,
+			items: [
+				{
+					...debit,
+					type: 'ISSUANCE',
+					effect: 'award',
+					amount: 25000,
+					rateEvidence: {
+						status: 'payment_snapshot',
+						message: 'Original settled payment and quote-time FX.',
+						events: [],
+						truncated: false,
+						payment: {
+							id: 'payment_example',
+							reference: 'invoice_example',
+							publicReference: '100001',
+							amountMinor: 33149406,
+							currency: 'NGN',
+							creditsAwarded: 25000,
+							fxRateMicro: 1325976230,
+							fxSpreadBps: 100,
+							fxSource: 'quote_snapshot',
+							fxAt: '2026-09-11T11:00:00Z',
+						},
+					},
+				},
+			],
+		});
+		mount();
+		await screen.findByText('Example workspace');
+		expect(screen.getByText(/331,494.06 paid/)).toBeInTheDocument();
+		expect(screen.getByText(/NGN 1,325.97623 per USD/)).toBeInTheDocument();
+		expect(screen.getByText(/1% spread/)).toBeInTheDocument();
+		expect(screen.getByText(/Invoice 100001 · 25,000 credits awarded/)).toBeInTheDocument();
+	});
 });
 describe('workspace credit links and amounts', () => {
 	it('preserves both customer and workspace identity in the link without trusting them as authorization', () => {
