@@ -221,6 +221,31 @@ describe('workspace credits read model', () => {
 		expect(billingGet).toHaveBeenCalledWith(workspaceCreditsQuery(workspaceId, 'cust_a'), expect.any(AbortSignal));
 		expect(screen.getByRole('link', { name: 'this customer’s' })).toBeInTheDocument();
 	});
+	it('shows an unsupported picker ID error without replacing the workspace report or customer link', async () => {
+		vi.mocked(billingGet).mockImplementation(async (path) =>
+			path.startsWith('/workspace-credits/workspaces?')
+				? {
+						workspaces: [{ ...response.workspace, id: 'unsupported-legacy-id', name: 'Unsupported workspace' }],
+						hasMore: false,
+					}
+				: structuredClone(response),
+		);
+		mount();
+		await screen.findByText('Example workspace');
+		fireEvent.focus(screen.getByLabelText('Find workspace'));
+		fireEvent.click(await screen.findByRole('button', { name: /Unsupported workspace.*View credits/ }));
+		expect(screen.getByRole('alert')).toHaveTextContent('valid Plaqad workspace ID');
+		expect(screen.getByText('Example workspace')).toBeInTheDocument();
+		expect(screen.getByText('23,900', { selector: 'p' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'this customer’s' })).toHaveAttribute('href', '/billing/customers/cust_a');
+		expect(screen.getByLabelText('Workspace ID')).toHaveValue('ws_a');
+		expect(
+			vi
+				.mocked(billingGet)
+				.mock.calls.filter(([path]) => path.startsWith('/workspace-credits?'))
+				.map(([path]) => path),
+		).toEqual([workspaceCreditsQuery('ws_a', 'cust_a')]);
+	});
 	it('removes cached financial results when refresh denies the admin session', async () => {
 		mount();
 		await screen.findByText('Example workspace');

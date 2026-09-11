@@ -295,9 +295,13 @@ export default function WorkspaceCreditsPage() {
 	const [input, setInput] = useState(workspaceId);
 	const [error, setError] = useState<unknown>(null);
 	function selectWorkspace(id: string) {
-		workspaceCreditsQuery(id);
-		setParams(id === workspaceId && customerId ? { workspaceId: id, customerId } : { workspaceId: id });
-		setError(null);
+		try {
+			workspaceCreditsQuery(id);
+			setParams(id === workspaceId && customerId ? { workspaceId: id, customerId } : { workspaceId: id });
+			setError(null);
+		} catch (cause) {
+			setError(cause);
+		}
 	}
 	useEffect(() => {
 		setInput(workspaceId);
@@ -305,12 +309,7 @@ export default function WorkspaceCreditsPage() {
 	}, [workspaceId, customerId]);
 	function apply(event: FormEvent) {
 		event.preventDefault();
-		try {
-			const id = input.trim();
-			selectWorkspace(id);
-		} catch (cause) {
-			setError(cause);
-		}
+		selectWorkspace(input.trim());
 	}
 	return (
 		<BillingPage
