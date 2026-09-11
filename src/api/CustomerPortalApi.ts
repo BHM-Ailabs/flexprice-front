@@ -14,6 +14,7 @@ import { GetUsageAnalyticsResponse } from '@/types/dto/Events';
 import { GetDetailedCostAnalyticsResponse } from '@/types/dto/Cost';
 import { generateQueryParams } from '@/utils/common/api_helper';
 import { PortalConfig, DEFAULT_PORTAL_CONFIG, deepMergePortalConfig } from '@/types/dto/PortalConfig';
+import { downloadInvoicePdf } from '@/utils/invoices/downloadInvoicePdf';
 
 /**
  * CustomerPortalApi - Customer-facing dashboard APIs
@@ -101,13 +102,10 @@ class CustomerPortalApi {
 	}
 
 	/**
-	 * Get a presigned URL for downloading an invoice PDF for the authenticated customer
+	 * Download PDF bytes using the authenticated customer's portal scope.
 	 */
 	public static async downloadInvoicePdf(invoiceId: string): Promise<void> {
-		const url = generateQueryParams(`${this.baseUrl}/invoices/${invoiceId}/pdf`, { url: true });
-		const response = await AxiosClient.get<{ presigned_url: string }>(url);
-		const presignedUrl = response.presigned_url;
-		window.open(presignedUrl, '_blank');
+		await downloadInvoicePdf(`${this.baseUrl}/invoices/${encodeURIComponent(invoiceId)}/pdf/content`, invoiceId);
 	}
 
 	/**

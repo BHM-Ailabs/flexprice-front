@@ -1,8 +1,5 @@
 import { AxiosClient } from '@/core/axios/verbs';
 import { Invoice } from '@/models';
-import { generateQueryParams } from '@/utils/common/api_helper';
-import AuthService from '@/core/auth/AuthService';
-import EnvironmentApi from '@/api/EnvironmentApi';
 import { SortDirection } from '@/types/common/QueryBuilder';
 import {
 	GetInvoicesResponse,
@@ -15,6 +12,7 @@ import {
 	RecalculateInvoiceResponse,
 } from '@/types/dto';
 import { downloadInvoiceLineItemsCsv } from '@/utils/invoices/downloadInvoiceLineItemsCsv';
+import { downloadInvoicePdf } from '@/utils/invoices/downloadInvoicePdf';
 
 class InvoiceApi {
 	private static baseurl = '/invoices';
@@ -82,45 +80,11 @@ class InvoiceApi {
 	}
 
 	public static async getInvoicePdf(invoiceId: string, invoiceNo?: string) {
-		const downloadFileName = invoiceNo ? `invoice-${invoiceNo}.pdf` : `invoice-${invoiceId}.pdf`;
-
-		const response = await fetch(`${import.meta.env.VITE_API_URL}${this.baseurl}/${invoiceId}/pdf`, {
-			headers: {
-				Authorization: `Bearer ${await AuthService.getAcessToken()}`,
-				'X-Environment-ID': EnvironmentApi.getActiveEnvironmentId() || '',
-				Accept: 'application/pdf',
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error('Failed to fetch PDF');
-		}
-
-		const arrayBuffer = await response.arrayBuffer();
-		const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-		const url = window.URL.createObjectURL(blob);
-
-		// Create a temporary link element
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = downloadFileName;
-
-		// Append to body, click and remove
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-
-		// Clean up the URL object
-		window.URL.revokeObjectURL(url);
+		await downloadInvoicePdf(`${this.baseurl}/${encodeURIComponent(invoiceId)}/pdf`, invoiceNo || invoiceId);
 	}
 
 	public static async downloadInvoicePdf(invoiceId: string) {
-		const params = { url: true };
-		const url = generateQueryParams(`${this.baseurl}/${invoiceId}/pdf`, params);
-		const response = await AxiosClient.get<{ presigned_url: string }>(url);
-		const presignedUrl = response.presigned_url;
-
-		window.open(presignedUrl, '_blank');
+		await this.getInvoicePdf(invoiceId);
 	}
 
 	/** Client-side CSV of line items with amount > 0; triggers download. @returns row count, or 0 if nothing to export */
