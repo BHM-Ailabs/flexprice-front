@@ -28,7 +28,7 @@ vi.mock('@/components/atoms', () => ({
 		) : null,
 }));
 vi.mock('@/api/PlaqadBillingApi', () => ({ billingGet: vi.fn(), billingPost: vi.fn(), downloadInvoice: vi.fn(), invoicePlans: vi.fn() }));
-import { billingGet, billingPost, type PrepaidInvoice } from '@/api/PlaqadBillingApi';
+import { billingGet, billingPost, invoicePlans, type PrepaidInvoice } from '@/api/PlaqadBillingApi';
 import PrepaidInvoicesPage from './PrepaidInvoicesPage';
 
 const fixture: PrepaidInvoice = {
@@ -71,6 +71,9 @@ beforeEach(() => {
 	invoice = { ...fixture };
 	vi.mocked(billingGet).mockImplementation(async (path) => (path === '/invoices' ? { invoices: [invoice] } : { invoice }));
 	vi.mocked(billingPost).mockResolvedValue({ invoice, claimUrl: 'https://account.plaqad.com/invoices/test' });
+	vi.mocked(invoicePlans).mockResolvedValue([
+		{ lookupKey: 'intel-pulse', name: 'Intel Pulse', ctaAction: 'subscribe', availableCurrencies: ['NGN', 'USD'] },
+	]);
 });
 describe('prepaid invoice operator actions', () => {
 	it('opens a saved invoice directly by ID and displays the exact quoted total', async () => {
@@ -107,6 +110,55 @@ describe('prepaid invoice operator actions', () => {
 					currency: 'NGN',
 					recipientEmail: 'customer@example.com',
 					kind: 'credits',
+				}),
+			),
+		);
+		expect(billingPost).toHaveBeenCalledTimes(1);
+	});
+	it.each(['', 'intel-exclusive-14d'])(
+		'omits a stale Intel selection after switching to a regular plan (promotional key: %j)',
+		async (promotionalKey) => {
+			mount();
+			fireEvent.click(await screen.findByRole('button', { name: 'Create invoice draft' }));
+			const dialog = screen.getByRole('dialog', { name: 'Create prepaid invoice draft' });
+			fireEvent.click(within(dialog).getByLabelText('Include 14 days of complimentary Intel'));
+			fireEvent.change(within(dialog).getByLabelText('Intel promotional plan lookup key'), { target: { value: promotionalKey } });
+			fireEvent.change(within(dialog).getByLabelText('Purchase'), { target: { value: 'plan' } });
+			expect(within(dialog).queryByLabelText('Include 14 days of complimentary Intel')).toBeNull();
+			expect(within(dialog).queryByLabelText('Intel promotional plan lookup key')).toBeNull();
+			await within(dialog).findByRole('option', { name: 'Intel Pulse' });
+			fireEvent.change(within(dialog).getByLabelText(/^Plan/), { target: { value: 'intel-pulse' } });
+			fireEvent.change(within(dialog).getByLabelText('Customer email'), { target: { value: 'customer@example.com' } });
+			fireEvent.change(within(dialog).getByLabelText(/^Due date/), {
+				target: { value: new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 16) },
+			});
+			fireEvent.click(within(dialog).getByRole('button', { name: 'Save invoice draft' }));
+			await waitFor(() => expect(billingPost).toHaveBeenCalledTimes(1));
+			const [path, payload] = vi.mocked(billingPost).mock.calls[0];
+			expect(path).toBe('/invoices');
+			expect(payload).toMatchObject({ kind: 'plan', planLookupKey: 'intel-pulse' });
+			expect(payload).not.toHaveProperty('intelPromotion');
+			expect(payload).not.toHaveProperty('credits');
+		},
+	);
+	it('retains the optional Intel promotion on a credit invoice', async () => {
+		mount();
+		fireEvent.click(await screen.findByRole('button', { name: 'Create invoice draft' }));
+		const dialog = screen.getByRole('dialog', { name: 'Create prepaid invoice draft' });
+		fireEvent.click(within(dialog).getByLabelText('Include 14 days of complimentary Intel'));
+		fireEvent.change(within(dialog).getByLabelText('Intel promotional plan lookup key'), { target: { value: 'intel-exclusive-14d' } });
+		fireEvent.change(within(dialog).getByLabelText('Customer email'), { target: { value: 'customer@example.com' } });
+		fireEvent.change(within(dialog).getByLabelText(/^Due date/), {
+			target: { value: new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 16) },
+		});
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Save invoice draft' }));
+		await waitFor(() =>
+			expect(billingPost).toHaveBeenCalledWith(
+				'/invoices',
+				expect.objectContaining({
+					kind: 'credits',
+					credits: 25000,
+					intelPromotion: { planLookupKey: 'intel-exclusive-14d', days: 14 },
 				}),
 			),
 		);

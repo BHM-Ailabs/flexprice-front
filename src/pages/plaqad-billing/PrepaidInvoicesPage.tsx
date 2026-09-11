@@ -99,7 +99,7 @@ export default function PrepaidInvoicesPage() {
 				if (!plan.trim()) throw new Error('Choose a plan lookup key.');
 				payload.planLookupKey = plan.trim();
 			}
-			if (intel) {
+			if (kind === 'credits' && intel) {
 				if (!intelPlan.trim()) throw new Error('Enter the Intel promotional plan lookup key.');
 				payload.intelPromotion = { planLookupKey: intelPlan.trim(), days: 14 };
 			}
@@ -459,23 +459,25 @@ export default function PrepaidInvoicesPage() {
 							)}
 						</div>
 					)}
-					<div className='my-5 rounded-md border border-zinc-200 p-4'>
-						<label className='flex items-center gap-3 text-sm font-medium'>
-							<input type='checkbox' className='h-4 w-4 accent-zinc-900' checked={intel} onChange={(e) => setIntel(e.target.checked)} />
-							Include 14 days of complimentary Intel
-						</label>
-						{intel && (
-							<div className='mt-4'>
-								<Field label='Intel promotional plan lookup key'>
-									<input required className={fieldClass} value={intelPlan} onChange={(e) => setIntelPlan(e.target.value)} />
-								</Field>
-								<p className='mt-3 text-xs leading-5 text-zinc-600'>
-									Starts after verified payment. Intel is excluded from the purchased credits until the customer explicitly agrees to
-									pay-as-you-go. Without consent, access stops at expiry.
-								</p>
-							</div>
-						)}
-					</div>
+					{kind === 'credits' && (
+						<div className='my-5 rounded-md border border-zinc-200 p-4'>
+							<label className='flex items-center gap-3 text-sm font-medium'>
+								<input type='checkbox' className='h-4 w-4 accent-zinc-900' checked={intel} onChange={(e) => setIntel(e.target.checked)} />
+								Include 14 days of complimentary Intel
+							</label>
+							{intel && (
+								<div className='mt-4'>
+									<Field label='Intel promotional plan lookup key'>
+										<input required className={fieldClass} value={intelPlan} onChange={(e) => setIntelPlan(e.target.value)} />
+									</Field>
+									<p className='mt-3 text-xs leading-5 text-zinc-600'>
+										Starts after verified payment. Intel is excluded from the purchased credits until the customer explicitly agrees to
+										pay-as-you-go. Without consent, access stops at expiry.
+									</p>
+								</div>
+							)}
+						</div>
+					)}
 					<Field label='Invoice note (optional)'>
 						<textarea className={fieldClass} rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
 					</Field>
