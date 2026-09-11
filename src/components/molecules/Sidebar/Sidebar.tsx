@@ -6,6 +6,7 @@ import { RouteNames } from '@/core/routes/Routes';
 import { EnvironmentSelector } from '@/components/molecules';
 import { Settings, Landmark, Layers2, CodeXml, Puzzle, GalleryHorizontalEnd, Home, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PLAQAD_AUTH_ENABLED } from '@/core/auth/PlaqadAuth';
 
 const AppSidebar: React.FC<React.ComponentProps<typeof Sidebar>> = ({ ...props }) => {
 	const { open: sidebarOpen } = useSidebar();
@@ -55,6 +56,7 @@ const AppSidebar: React.FC<React.ComponentProps<typeof Sidebar>> = ({ ...props }
 			url: RouteNames.customers,
 			icon: Landmark,
 			items: [
+				...(PLAQAD_AUTH_ENABLED ? [{ title: 'Prepaid invoices', url: RouteNames.prepaidInvoices }] : []),
 				{
 					title: 'Customers',
 					url: RouteNames.customers,
