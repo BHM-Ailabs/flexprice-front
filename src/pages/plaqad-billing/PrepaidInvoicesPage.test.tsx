@@ -387,6 +387,35 @@ describe('manual invoice and issuer controls', () => {
 });
 
 describe('owner consent and manual account claims', () => {
+	it('searches all prepaid invoices on the server by an old alias and displays the canonical number', async () => {
+		vi.mocked(billingGet).mockImplementation(async (path) => {
+			if (path === '/invoices') return { invoices: [] };
+			if (path === '/invoices?search=INV-OLD') return { invoices: [{ ...fixture, publicReference: '8K4M2P' }], nextBefore: null };
+			return { invoice: { ...fixture, publicReference: '8K4M2P' } };
+		});
+		mount();
+		fireEvent.change(await screen.findByLabelText('Find an invoice'), { target: { value: 'INV-OLD' } });
+		fireEvent.click(await screen.findByRole('button', { name: '8K4M2P' }));
+		await waitFor(() => expect(billingGet).toHaveBeenCalledWith('/invoices?search=INV-OLD'));
+		await waitFor(() => expect(billingGet).toHaveBeenCalledWith('/invoices/inv-test'));
+		expect(billingPost).not.toHaveBeenCalled();
+	});
+	it('loads the next prepaid invoice batch using the server cursor without losing the search', async () => {
+		vi.mocked(billingGet).mockImplementation(async (path) => {
+			if (path === '/invoices?search=customer')
+				return { invoices: [{ ...fixture, publicReference: 'FIRST1' }], nextBefore: '2026-09-01T00:00:00.000Z' };
+			if (path.includes('before=')) return { invoices: [{ ...fixture, id: 'older-invoice', publicReference: 'OLDER2' }], nextBefore: null };
+			return { invoices: [] };
+		});
+		mount();
+		fireEvent.change(await screen.findByLabelText('Find an invoice'), { target: { value: 'customer' } });
+		await screen.findByRole('button', { name: 'FIRST1' });
+		fireEvent.click(screen.getByRole('button', { name: 'Load more invoices' }));
+		await screen.findByRole('button', { name: 'OLDER2' });
+		expect(billingGet).toHaveBeenCalledWith('/invoices?search=customer&before=2026-09-01T00%3A00%3A00.000Z');
+		expect(screen.getByRole('button', { name: 'FIRST1' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Load more invoices' })).toBeNull();
+	});
 	it('does not offer staff checkout preparation for a recurring gateway plan', async () => {
 		invoice = { ...fixture, kind: 'plan', credits: null, planLookupKey: 'intel-pulse', collectionMethod: 'gateway', status: 'issued' };
 		mount('/billing/prepaid-invoices/inv-test');

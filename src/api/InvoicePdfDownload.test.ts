@@ -107,6 +107,30 @@ describe('authenticated invoice PDF downloads', () => {
 		expect(createUrl).toHaveBeenCalledWith(responseBlob);
 	});
 
+	it('uses the public number only for filenames and retains exact native IDs on both PDF routes', async () => {
+		await InvoiceApi.downloadInvoicePdf('inv_internal', '8K4M2P');
+		expect(requests[0].url).toBe('/invoices/inv_internal/pdf');
+		expect(clicks[0].filename).toBe('invoice-8K4M2P.pdf');
+		setRuntimeCredentials({ sessionToken: 'scoped-customer-token' });
+		await CustomerPortalApi.downloadInvoicePdf('inv_internal', '8K4M2P');
+		expect(requests[1].url).toBe('/customer/portal/invoices/inv_internal/pdf/content');
+		expect(clicks[1].filename).toBe('invoice-8K4M2P.pdf');
+	});
+
+	it('sends remote reference search and page to the customer-scoped portal API with portal credentials', async () => {
+		setRuntimeCredentials({ sessionToken: 'scoped-customer-token' });
+		axiosClient.defaults.adapter = async (config) => {
+			requests.push(config);
+			return { config, data: { items: [], pagination: { total: 0 } }, status: 200, statusText: 'OK', headers: {} };
+		};
+		await CustomerPortalApi.getInvoices({ search: 'INV-OLD', page: 5, limit: 25 });
+		expect(requests[0]).toMatchObject({ url: '/customer/portal/invoices', method: 'post' });
+		expect(JSON.parse(requests[0].data)).toEqual({ search: 'INV-OLD', page: 5, limit: 25 });
+		expect(requests[0].headers.get('X-Session-Token')).toBe('scoped-customer-token');
+		expect(requests[0].headers.get('Authorization')).toBeUndefined();
+		expect(auth.token).not.toHaveBeenCalled();
+	});
+
 	it('retains dashboard reauthentication on 401 without automatically replaying the request', async () => {
 		rejectResponse(401, 'Session expired');
 		const redirect = new Error('Refreshing your Plaqad sign-in…');

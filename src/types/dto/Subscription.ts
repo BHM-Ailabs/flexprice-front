@@ -91,6 +91,8 @@ export interface GetSubscriptionPreviewResponse {
 	id: string;
 	idempotency_key: string;
 	invoice_number: string;
+	public_reference?: string | null;
+	reference_aliases?: string[];
 	invoice_pdf_url: string;
 	invoice_status: string;
 	invoice_type: string;

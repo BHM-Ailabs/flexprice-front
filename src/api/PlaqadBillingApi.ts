@@ -61,12 +61,12 @@ export interface ExternalInvoicePayment {
 	providerPaymentId: string | null;
 	confirmedAt: string | null;
 }
-export async function downloadInvoice(id: string): Promise<void> {
+export async function downloadInvoice(id: string, invoiceNumber?: string): Promise<void> {
 	const response = await request(`/invoices/${encodeURIComponent(id)}/pdf`);
 	const url = URL.createObjectURL(await response.blob());
 	const link = document.createElement('a');
 	link.href = url;
-	link.download = `Plaqad-invoice-${id}.pdf`;
+	link.download = `invoice-${(invoiceNumber || id).replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
 	link.click();
 	setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
@@ -148,6 +148,7 @@ export interface PrepaidInvoice {
 	recipientTaxId?: string | null;
 	id: string;
 	invoiceNumber: string;
+	publicReference?: string | null;
 	recipientEmail: string;
 	recipientName: string | null;
 	kind: 'credits' | 'plan';

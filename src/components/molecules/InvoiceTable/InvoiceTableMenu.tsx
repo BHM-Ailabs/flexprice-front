@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { Invoice, INVOICE_STATUS, INVOICE_TYPE } from '@/models/Invoice';
 import { FC, useState } from 'react';
 import { DropdownMenu, RecordPaymentTopup } from '..';
@@ -38,7 +39,7 @@ const InvoiceTableMenu: FC<Props> = ({ data }) => {
 
 	const { mutateAsync: downloadInvoicePdfAsync, isPending: isPdfDownloadPending } = useMutation({
 		mutationFn: async (invoice_id: string) => {
-			return await InvoiceApi.downloadInvoicePdf(invoice_id);
+			return await InvoiceApi.downloadInvoicePdf(invoice_id, invoiceReference(data));
 		},
 		onSuccess: () => {
 			toast.success('Invoice downloaded');

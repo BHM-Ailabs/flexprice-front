@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { Page, Chip } from '@/components/atoms';
 import { ApiDocsContent, RedirectCell } from '@/components/molecules';
 import { ColumnData } from '@/components/molecules/Table';
@@ -29,7 +30,7 @@ import { useCallback, useMemo, useState } from 'react';
 const sortingOptions: SortOption[] = [
 	{
 		field: 'invoice_number',
-		label: 'Invoice Number',
+		label: 'Legacy Invoice Number',
 		direction: SortDirection.ASC,
 	},
 	{
@@ -51,8 +52,15 @@ const sortingOptions: SortOption[] = [
 
 const filterOptions: FilterField[] = [
 	{
+		field: 'invoice_reference',
+		label: 'Invoice Number or Reference',
+		fieldType: FilterFieldType.INPUT,
+		operators: [FilterOperator.CONTAINS, FilterOperator.EQUAL],
+		dataType: DataType.STRING,
+	},
+	{
 		field: 'invoice_number',
-		label: 'Invoice Number',
+		label: 'Legacy Invoice Number',
 		fieldType: FilterFieldType.INPUT,
 		operators: DEFAULT_OPERATORS_PER_DATA_TYPE[DataType.STRING],
 		dataType: DataType.STRING,
@@ -136,7 +144,7 @@ const filterOptions: FilterField[] = [
 
 const initialFilters: FilterCondition[] = [
 	{
-		field: 'invoice_number',
+		field: 'invoice_reference',
 		operator: FilterOperator.CONTAINS,
 		valueString: '',
 		dataType: DataType.STRING,
@@ -276,10 +284,10 @@ const InvoicesPage = () => {
 			{
 				title: 'Invoice Number',
 				render: (row: EnrichedInvoice) =>
-					row.invoice_status?.toUpperCase() === INVOICE_STATUS.DRAFT ? (
+					row.invoice_status?.toUpperCase() === INVOICE_STATUS.DRAFT && !row.public_reference ? (
 						<span className='text-gray-400 italic text-[13px]'>To be generated</span>
 					) : (
-						<span>{row.invoice_number || '--'}</span>
+						<span>{invoiceReference(row)}</span>
 					),
 			},
 			{

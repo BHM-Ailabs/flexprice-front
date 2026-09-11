@@ -35,7 +35,7 @@ const INVOICES_QUERY_KEY = 'fetchInvoices';
 function getFiltersForPaymentStatus(paymentStatus: string): FilterCondition[] {
 	return [
 		{
-			field: 'invoice_number',
+			field: 'invoice_reference',
 			operator: FilterOperator.CONTAINS,
 			valueString: '',
 			dataType: DataType.STRING,

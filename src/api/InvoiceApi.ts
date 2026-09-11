@@ -83,8 +83,8 @@ class InvoiceApi {
 		await downloadInvoicePdf(`${this.baseurl}/${encodeURIComponent(invoiceId)}/pdf`, invoiceNo || invoiceId);
 	}
 
-	public static async downloadInvoicePdf(invoiceId: string) {
-		await this.getInvoicePdf(invoiceId);
+	public static async downloadInvoicePdf(invoiceId: string, invoiceNumber?: string) {
+		await this.getInvoicePdf(invoiceId, invoiceNumber);
 	}
 
 	/** Client-side CSV of line items with amount > 0; triggers download. @returns row count, or 0 if nothing to export */

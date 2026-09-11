@@ -1,6 +1,8 @@
+import { prepaidInvoiceReference } from '@/utils/invoices/invoiceReference';
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useDebounce } from 'use-debounce';
 import { Button, Dialog } from '@/components/atoms';
 import {
 	billingGet,
@@ -29,9 +31,18 @@ export default function PrepaidInvoicesPage() {
 	const client = useQueryClient();
 	const navigate = useNavigate();
 	const { invoiceId } = useParams<{ invoiceId: string }>();
-	const list = useQuery({
-		queryKey: ['plaqad-invoices'],
-		queryFn: () => billingGet<{ invoices: PrepaidInvoice[] }>('/invoices'),
+	const [search, setSearch] = useState('');
+	const [debouncedSearch] = useDebounce(search.trim(), 300);
+	const list = useInfiniteQuery({
+		queryKey: ['plaqad-invoices', debouncedSearch],
+		initialPageParam: undefined as string | undefined,
+		queryFn: ({ pageParam }) => {
+			const params = new URLSearchParams();
+			if (debouncedSearch) params.set('search', debouncedSearch);
+			if (pageParam) params.set('before', pageParam);
+			return billingGet<{ invoices: PrepaidInvoice[]; nextBefore?: string | null }>(`/invoices${params.size ? `?${params}` : ''}`);
+		},
+		getNextPageParam: (page) => page.nextBefore || undefined,
 		refetchInterval: 60000,
 	});
 	const selected = invoiceId ?? null;
@@ -60,7 +71,6 @@ export default function PrepaidInvoicesPage() {
 	const [note, setNote] = useState('');
 	const [intel, setIntel] = useState(false);
 	const [intelPlan, setIntelPlan] = useState('');
-	const [search, setSearch] = useState('');
 	const [error, setError] = useState<unknown>(null);
 	const [notice, setNotice] = useState('');
 	const [delivery, setDelivery] = useState<'review' | 'recipient' | 'revoke' | 'issue' | 'prepare' | null>(null);
@@ -72,10 +82,7 @@ export default function PrepaidInvoicesPage() {
 	const invoice = detail.data?.invoice;
 	const checkoutUrl = paymentLink(detail.data?.checkoutUrl ?? invoice?.checkoutUrl);
 	const plans = useQuery({ queryKey: ['plaqad-invoice-plans'], queryFn: invoicePlans, enabled: creating && kind === 'plan' });
-	const rows =
-		list.data?.invoices.filter((row) =>
-			`${row.invoiceNumber} ${row.recipientName || ''} ${row.recipientEmail}`.toLowerCase().includes(search.toLowerCase()),
-		) ?? [];
+	const rows = list.data?.pages.flatMap((page) => page.invoices) ?? [];
 
 	function invalidate() {
 		void client.invalidateQueries({ queryKey: ['plaqad-invoices'] });
@@ -122,7 +129,7 @@ export default function PrepaidInvoicesPage() {
 			selectInvoice(result.invoice.id);
 			setCreating(false);
 			setCreateKey(crypto.randomUUID());
-			setNotice(`Invoice ${result.invoice.invoiceNumber} saved as a draft. No email has been sent.`);
+			setNotice(`Invoice ${prepaidInvoiceReference(result.invoice)} saved as a draft. No email has been sent.`);
 			invalidate();
 		},
 		onError: setError,
@@ -177,7 +184,7 @@ export default function PrepaidInvoicesPage() {
 		if (!invoice) return;
 		setDownloading(true);
 		try {
-			await downloadInvoice(invoice.id);
+			await downloadInvoice(invoice.id, prepaidInvoiceReference(invoice));
 		} catch (cause) {
 			setError(cause);
 		} finally {
@@ -208,6 +215,7 @@ export default function PrepaidInvoicesPage() {
 							type='search'
 							className={fieldClass}
 							placeholder='Invoice number, name or email'
+							maxLength={200}
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
 						/>
@@ -226,7 +234,7 @@ export default function PrepaidInvoicesPage() {
 			{list.isLoading ? (
 				<p role='status'>Loading invoices…</p>
 			) : (
-				<Panel title='Recent prepaid invoices'>
+				<Panel title={debouncedSearch ? 'Matching prepaid invoices' : 'Prepaid invoices'}>
 					<div className='overflow-x-auto'>
 						<table className={`${tableClass} min-w-[760px]`}>
 							<thead>
@@ -250,7 +258,7 @@ export default function PrepaidInvoicesPage() {
 													selectInvoice(row.id);
 													setError(null);
 												}}>
-												{row.invoiceNumber}
+												{prepaidInvoiceReference(row)}
 											</button>
 										</td>
 										<td>
@@ -271,6 +279,11 @@ export default function PrepaidInvoicesPage() {
 							No invoices found. Create a draft to prepare your first prepaid invoice.
 						</p>
 					)}
+					{list.hasNextPage && (
+						<Button className='mt-4' disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
+							{list.isFetchingNextPage ? 'Loading invoices…' : 'Load more invoices'}
+						</Button>
+					)}
 				</Panel>
 			)}
 			{detail.isFetching && (
@@ -279,7 +292,7 @@ export default function PrepaidInvoicesPage() {
 				</p>
 			)}
 			{invoice && (
-				<Panel title={`${invoice.invoiceNumber} · ${statusLabels[invoice.status]}`}>
+				<Panel title={`${prepaidInvoiceReference(invoice)} · ${statusLabels[invoice.status]}`}>
 					<div className='grid gap-6 sm:grid-cols-2'>
 						<div>
 							<p className='text-xs text-zinc-500'>Bill to</p>
@@ -605,7 +618,7 @@ export default function PrepaidInvoicesPage() {
 				}>
 				{invoice && (
 					<p className='mb-4 text-sm font-medium'>
-						{invoice.invoiceNumber} · {invoiceMoney(invoice.amountMinor, invoice.currency)}
+						{prepaidInvoiceReference(invoice)} · {invoiceMoney(invoice.amountMinor, invoice.currency)}
 					</p>
 				)}
 				{delivery === 'prepare' && (

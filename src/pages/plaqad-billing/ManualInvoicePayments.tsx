@@ -1,3 +1,4 @@
+import { prepaidInvoiceReference } from '@/utils/invoices/invoiceReference';
 import { FormEvent, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Button, Dialog } from '@/components/atoms';
@@ -117,7 +118,7 @@ export default function ManualInvoicePayments({ detail, refresh }: { detail: Pre
 				description='This records actual money received outside the gateway. It does not initiate a charge or send an email.'>
 				<form onSubmit={submit} className='space-y-4'>
 					<p className='text-sm font-medium'>
-						{invoice.invoiceNumber} · {invoice.recipientEmail} · {invoiceMoney(remaining, invoice.currency)} outstanding
+						{prepaidInvoiceReference(invoice)} · {invoice.recipientEmail} · {invoiceMoney(remaining, invoice.currency)} outstanding
 					</p>
 					{pending && (
 						<p className='text-sm'>

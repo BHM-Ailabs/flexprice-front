@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import CustomerPortalApi from '@/api/CustomerPortalApi';
-import { portalInvoicesQueryKey } from '@/components/customer-portal/queryKeys';
+import { usePortalInvoices } from '@/components/customer-portal/usePortalInvoices';
+import InvoicePagination from '@/components/customer-portal/InvoicePagination';
 import { Card, Chip } from '@/components/atoms';
 import { InvoiceDownloadFormatDialog } from '@/components/molecules';
 import { Invoice, INVOICE_STATUS } from '@/models/Invoice';
@@ -26,13 +28,13 @@ const getStatusChip = (invoice: Invoice) => {
 
 interface InvoicesTableProps {
 	invoices: Invoice[];
-	currencySymbol: string;
+	showEmpty: boolean;
 	onOpenDownloadFormat: (invoice: Invoice) => void;
 	downloadPendingId: string | null;
 	hasTheme: boolean;
 }
 
-const InvoicesTable = ({ invoices, currencySymbol, onOpenDownloadFormat, downloadPendingId, hasTheme }: InvoicesTableProps) => (
+const InvoicesTable = ({ invoices, showEmpty, onOpenDownloadFormat, downloadPendingId, hasTheme }: InvoicesTableProps) => (
 	<div className='overflow-x-auto'>
 		<table className='w-full'>
 			<thead>
@@ -59,11 +61,11 @@ const InvoicesTable = ({ invoices, currencySymbol, onOpenDownloadFormat, downloa
 							{invoice.finalized_at ? formatDateShort(invoice.finalized_at) : formatDateShort(invoice.created_at)}
 						</td>
 						<td className='px-4 py-3 text-sm font-medium' style={{ color: 'var(--portal-text-primary, #09090b)' }}>
-							{invoice.invoice_number || `INV-${invoice.id.slice(0, 8)}`}
+							{invoiceReference(invoice)}
 						</td>
 						<td className='px-4 py-3'>{getStatusChip(invoice)}</td>
 						<td className='px-4 py-3 text-sm text-right font-medium' style={{ color: 'var(--portal-text-primary, #09090b)' }}>
-							{currencySymbol}
+							{getCurrencySymbol(invoice.currency)}
 							{formatAmount(String(invoice.total ?? 0))}
 						</td>
 						<td className='px-4 py-3 text-center'>
@@ -81,7 +83,7 @@ const InvoicesTable = ({ invoices, currencySymbol, onOpenDownloadFormat, downloa
 				))}
 			</tbody>
 		</table>
-		{invoices.length === 0 && (
+		{showEmpty && invoices.length === 0 && (
 			<div className='py-8'>
 				<EmptyState title='No invoices found' description='No invoices match your search criteria' />
 			</div>
@@ -90,43 +92,21 @@ const InvoicesTable = ({ invoices, currencySymbol, onOpenDownloadFormat, downloa
 );
 
 const InvoicesWidget = () => {
-	const [searchQuery, setSearchQuery] = useState('');
+	const invoiceSearch = usePortalInvoices();
+	const { search: searchQuery, setSearch: setSearchQuery, data: invoicesData, isLoading, isError } = invoiceSearch;
 	const [downloadTarget, setDownloadTarget] = useState<Invoice | null>(null);
 	const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
 	const [isCsvExportPending, setIsCsvExportPending] = useState(false);
 	const { config } = usePortalConfig();
 	const hasTheme = !!config.theme;
 
-	const {
-		data: invoicesData,
-		isLoading,
-		isError,
-	} = useQuery({
-		queryKey: portalInvoicesQueryKey,
-		queryFn: () => CustomerPortalApi.getInvoices({ limit: 100, offset: 0 }),
-	});
-
 	const { mutateAsync: downloadPdfAsync, isPending: isDownloading } = useMutation({
-		mutationFn: (invoiceId: string) => CustomerPortalApi.downloadInvoicePdf(invoiceId),
+		mutationFn: (invoiceId: string) => CustomerPortalApi.downloadInvoicePdf(invoiceId, invoiceReference(downloadTarget)),
 		onSuccess: () => toast.success('Invoice downloaded'),
 		onError: () => toast.error('Failed to download invoice'),
 	});
 
-	useEffect(() => {
-		if (isError) toast.error('Failed to load invoices');
-	}, [isError]);
-
-	const invoices = useMemo(() => invoicesData?.items ?? [], [invoicesData?.items]);
-	const filteredInvoices = useMemo(() => {
-		if (!searchQuery) return invoices;
-		const query = searchQuery.toLowerCase();
-		return invoices.filter(
-			(invoice) =>
-				invoice.invoice_number?.toLowerCase().includes(query) ||
-				invoice.invoice_status?.toLowerCase().includes(query) ||
-				invoice.payment_status?.toLowerCase().includes(query),
-		);
-	}, [invoices, searchQuery]);
+	const invoices = invoicesData?.items ?? [];
 
 	const openInvoiceDownload = (invoice: Invoice) => {
 		setDownloadTarget(invoice);
@@ -134,36 +114,6 @@ const InvoicesWidget = () => {
 	};
 
 	const busyDownloadInvoiceId = isDownloading || isCsvExportPending ? (downloadTarget?.id ?? null) : null;
-
-	if (isLoading) {
-		return (
-			<div className='space-y-6'>
-				<div className='h-10 bg-zinc-100 animate-pulse rounded-md'></div>
-				<Card
-					className='rounded-xl p-4'
-					style={{ backgroundColor: 'var(--portal-surface, white)', border: '1px solid var(--portal-border, #E9E9E9)' }}>
-					<div className='animate-pulse space-y-3'>
-						{[1, 2, 3, 4].map((i) => (
-							<div key={i} className='h-12 bg-zinc-100 rounded'></div>
-						))}
-					</div>
-				</Card>
-			</div>
-		);
-	}
-
-	const currency = invoices[0]?.currency || 'USD';
-	const currencySymbol = getCurrencySymbol(currency);
-
-	if (invoices.length === 0) {
-		return (
-			<Card
-				className='rounded-xl p-6'
-				style={{ backgroundColor: 'var(--portal-surface, white)', border: '1px solid var(--portal-border, #E9E9E9)' }}>
-				<EmptyState title='No invoices' description='No invoices have been generated yet' />
-			</Card>
-		);
-	}
 
 	return (
 		<div className='space-y-6'>
@@ -207,7 +157,9 @@ const InvoicesWidget = () => {
 				/>
 				<input
 					type='text'
-					placeholder='Search invoices...'
+					aria-label='Search invoices'
+					maxLength={200}
+					placeholder='Search invoice number or reference'
 					value={searchQuery}
 					onChange={(e) => setSearchQuery(e.target.value)}
 					className='w-full pl-10 pr-4 py-2.5 text-sm rounded-lg outline-none focus:ring-1 transition-colors'
@@ -223,13 +175,28 @@ const InvoicesWidget = () => {
 				className='rounded-xl overflow-hidden'
 				style={{ backgroundColor: 'var(--portal-surface, white)', border: '1px solid var(--portal-border, #E9E9E9)' }}>
 				<InvoicesTable
-					invoices={filteredInvoices}
-					currencySymbol={currencySymbol}
+					invoices={invoices}
+					showEmpty={!isLoading && !isError}
 					onOpenDownloadFormat={openInvoiceDownload}
 					downloadPendingId={busyDownloadInvoiceId}
 					hasTheme={hasTheme}
 				/>
 			</Card>
+			{isLoading && <p role='status'>Loading invoices…</p>}
+			{isError && (
+				<p role='alert'>
+					Invoices could not be loaded.{' '}
+					<button type='button' className='underline' onClick={() => void invoiceSearch.refetch()}>
+						Retry
+					</button>
+				</p>
+			)}
+			<InvoicePagination
+				page={invoiceSearch.page}
+				total={invoiceSearch.total}
+				busy={invoiceSearch.isFetching}
+				onPage={invoiceSearch.setPage}
+			/>
 		</div>
 	);
 };

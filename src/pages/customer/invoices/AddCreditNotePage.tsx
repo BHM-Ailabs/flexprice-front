@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { Button, Chip, Dialog, Input, Page, Select, SelectOption, Textarea } from '@/components/atoms';
 import { Skeleton } from '@/components/ui';
 import { useBreadcrumbsStore } from '@/store';
@@ -91,7 +92,7 @@ const AddCreditNotePage = () => {
 
 		if (invoice) {
 			updateBreadcrumb(2, invoice.customer?.external_id || 'Customer');
-			updateBreadcrumb(4, invoice.invoice_number);
+			updateBreadcrumb(4, invoiceReference(invoice));
 			updateBreadcrumb(5, 'Issue Credit Note');
 		}
 	}, [invoice, updateBreadcrumb, setSegmentLoading]);
@@ -253,7 +254,7 @@ const AddCreditNotePage = () => {
 				<div className='bg-white border rounded-lg p-6'>
 					<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
 						<div>
-							<div className='text-sm font-medium'>{invoice?.invoice_number}</div>
+							<div className='text-sm font-medium'>{invoiceReference(invoice)}</div>
 							<div className='text-sm text-gray-500'>Invoice Number</div>
 						</div>
 						<div>

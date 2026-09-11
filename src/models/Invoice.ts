@@ -22,6 +22,8 @@ export interface Invoice extends BaseModel {
 	readonly amount_paid: number;
 	readonly amount_remaining: number;
 	readonly invoice_number: string;
+	readonly public_reference?: string | null;
+	readonly reference_aliases?: string[];
 	readonly idempotency_key: string;
 	readonly billing_sequence: number;
 	readonly description: string;

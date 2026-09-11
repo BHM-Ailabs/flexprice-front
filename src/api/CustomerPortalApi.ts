@@ -62,7 +62,7 @@ class CustomerPortalApi {
 	/**
 	 * Get invoices for the authenticated customer with pagination
 	 */
-	public static async getInvoices(payload: DashboardPaginatedRequest): Promise<GetInvoicesResponse> {
+	public static async getInvoices(payload: DashboardPaginatedRequest & { page?: number; search?: string }): Promise<GetInvoicesResponse> {
 		return await AxiosClient.post<GetInvoicesResponse>(`${this.baseUrl}/invoices`, payload);
 	}
 
@@ -104,8 +104,8 @@ class CustomerPortalApi {
 	/**
 	 * Download PDF bytes using the authenticated customer's portal scope.
 	 */
-	public static async downloadInvoicePdf(invoiceId: string): Promise<void> {
-		await downloadInvoicePdf(`${this.baseUrl}/invoices/${encodeURIComponent(invoiceId)}/pdf/content`, invoiceId);
+	public static async downloadInvoicePdf(invoiceId: string, invoiceNumber?: string): Promise<void> {
+		await downloadInvoicePdf(`${this.baseUrl}/invoices/${encodeURIComponent(invoiceId)}/pdf/content`, invoiceNumber || invoiceId);
 	}
 
 	/**

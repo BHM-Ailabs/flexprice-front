@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { CreditNote } from '@/models';
 import { CREDIT_NOTE_STATUS, CREDIT_NOTE_TYPE } from '@/types/dto';
 import { FC } from 'react';
@@ -61,11 +62,7 @@ const CreditNoteTable: FC<Props> = ({ data }) => {
 			render: (row: CreditNote) => {
 				if (!row.invoice_id) return '--';
 
-				return (
-					<RedirectCell redirectUrl={`${RouteNames.invoices}/${row.invoice_id}`}>
-						{row.invoice?.invoice_number || row.invoice_id.slice(0, 8)}
-					</RedirectCell>
-				);
+				return <RedirectCell redirectUrl={`${RouteNames.invoices}/${row.invoice_id}`}>{invoiceReference(row.invoice)}</RedirectCell>;
 			},
 		},
 		{

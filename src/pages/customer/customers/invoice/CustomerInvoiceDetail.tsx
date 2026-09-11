@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { FormHeader, Spacer, Button, Divider, Loader, Card, CardHeader } from '@/components/atoms';
 import {
 	InvoiceTableMenu,
@@ -62,7 +63,7 @@ const CustomerInvoiceDetail: FC<Props> = ({ invoice_id, breadcrumb_index }) => {
 	});
 
 	const { mutateAsync: downloadInvoicePdfAsync, isPending: isPdfDownloadPending } = useMutation({
-		mutationFn: async () => InvoiceApi.downloadInvoicePdf(invoice_id),
+		mutationFn: async () => InvoiceApi.downloadInvoicePdf(invoice_id, invoiceReference(data)),
 		onSuccess: () => {
 			toast.success('Invoice downloaded');
 		},
@@ -71,9 +72,10 @@ const CustomerInvoiceDetail: FC<Props> = ({ invoice_id, breadcrumb_index }) => {
 		},
 	});
 
+	const displayedReference = invoiceReference(data);
 	useEffect(() => {
-		updateBreadcrumb(breadcrumb_index, data?.invoice_number ?? invoice_id);
-	}, [invoice_id, data?.invoice_number, breadcrumb_index, updateBreadcrumb]);
+		updateBreadcrumb(breadcrumb_index, displayedReference);
+	}, [displayedReference, breadcrumb_index, updateBreadcrumb]);
 
 	// Process metadata from invoice data
 	useEffect(() => {
@@ -185,7 +187,7 @@ const CustomerInvoiceDetail: FC<Props> = ({ invoice_id, breadcrumb_index }) => {
 							<p>Payment Status</p>
 						</div>
 						<div className='w-full grid grid-cols-4 gap-4 text-[#71717A] text-sm'>
-							<p>{data?.invoice_number}</p>
+							<p>{invoiceReference(data)}</p>
 							<p>{formatDate(data?.created_at ?? '')}</p>
 							<p>{data?.due_date ? formatDate(data?.due_date ?? '') : '--'}</p>
 							<p>{getPaymentStatusChip(data?.payment_status ?? '')}</p>

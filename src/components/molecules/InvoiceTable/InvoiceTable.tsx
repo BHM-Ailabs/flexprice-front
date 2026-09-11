@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { Invoice, INVOICE_STATUS } from '@/models/Invoice';
 import { FC } from 'react';
 import FlexpriceTable, { ColumnData, RedirectCell } from '../Table';
@@ -52,10 +53,10 @@ const InvoiceTable: FC<Props> = ({ data }) => {
 		{
 			title: 'Invoice Number',
 			render: (row: Invoice) =>
-				row.invoice_status?.toUpperCase() === INVOICE_STATUS.DRAFT ? (
+				row.invoice_status?.toUpperCase() === INVOICE_STATUS.DRAFT && !row.public_reference ? (
 					<span className='text-gray-400 italic text-[13px]'>To be generated</span>
 				) : (
-					<span>{row.invoice_number || '--'}</span>
+					<span>{invoiceReference(row)}</span>
 				),
 		},
 		{

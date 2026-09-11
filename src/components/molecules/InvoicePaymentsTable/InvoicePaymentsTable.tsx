@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { FC, useMemo, useCallback } from 'react';
 import { Payment } from '@/models/Payment';
 import FlexpriceTable, { ColumnData, TooltipCell } from '../Table';
@@ -121,13 +122,11 @@ const InvoicePaymentsTable: FC<Props> = ({ data }) => {
 				render: (rowData) => <TooltipCell tooltipContent={rowData.idempotency_key} tooltipText={rowData.idempotency_key} />,
 			},
 			{
-				title: 'Invoice ID',
+				title: 'Invoice Number',
 				render: (payment) => {
 					if (payment.destination_type.toUpperCase() === 'INVOICE') {
 						return (
-							<RedirectCell redirectUrl={`${RouteNames.invoices}/${payment.destination_id}`}>
-								{payment.invoice_number || payment.destination_id}
-							</RedirectCell>
+							<RedirectCell redirectUrl={`${RouteNames.invoices}/${payment.destination_id}`}>{invoiceReference(payment)}</RedirectCell>
 						);
 					}
 					return <span>{payment.destination_id}</span>;

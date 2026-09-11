@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import type { Invoice, LineItem } from '@/models/Invoice';
 import { INVOICE_TYPE } from '@/models/Invoice';
 import { formatBillingPeriod } from '@/utils/common/format_date';
@@ -52,7 +53,7 @@ export function downloadInvoiceLineItemsCsv(invoice: Invoice): number {
 	const csv = buildInvoiceLineItemsCsv(invoice);
 	const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
 	const url = URL.createObjectURL(blob);
-	const baseName = sanitizeFilenamePart(invoice.invoice_number || invoice.id);
+	const baseName = sanitizeFilenamePart(invoiceReference(invoice));
 	const a = document.createElement('a');
 	a.href = url;
 	a.download = `invoice-${baseName}.csv`;

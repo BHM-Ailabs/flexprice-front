@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { FC, useMemo } from 'react';
 import FlexpriceTable, { ColumnData, RedirectCell } from '../Table';
 import { getCurrencySymbol } from '@/utils/common/helper_functions';
@@ -34,7 +35,7 @@ const CustomerInvoiceTable: FC<Props> = ({ data, onRowClick }) => {
 		const cols: ColumnData<EnrichedInvoice>[] = [
 			{
 				title: 'Invoice Number',
-				render: (row) => <>{row.invoice_number || '--'}</>,
+				render: (row) => <>{invoiceReference(row)}</>,
 			},
 			{
 				title: 'Plan',

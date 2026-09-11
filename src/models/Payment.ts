@@ -5,6 +5,8 @@ export interface Payment extends BaseModel {
 	readonly amount: number;
 	readonly attempts: Attempt[];
 	readonly invoice_number: string;
+	readonly public_reference?: string | null;
+	readonly reference_aliases?: string[];
 	readonly currency: string;
 	readonly destination_id: string;
 	readonly destination_type: PAYMENT_DESTINATION_TYPE;

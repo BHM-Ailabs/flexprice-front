@@ -1,7 +1,8 @@
+import { invoiceReference, invoiceSearchHref } from '@/utils/invoices/invoiceReference';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useDebounce } from 'use-debounce';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
 	ArrowDownRight,
 	ArrowUpRight,
@@ -444,6 +445,12 @@ const Revenue = () => {
 						<SearchBar value={invoiceSearch} placeholder='Search invoice number or reference' onChange={setInvoiceSearch} />
 						<span className='hidden text-xs uppercase tracking-wide text-zinc-400 sm:block'>{selectedCurrency}</span>
 					</div>
+					<p className='text-xs text-zinc-500'>
+						Search covers finalized invoices in this period and currency.{' '}
+						<Link className='underline underline-offset-4' to={invoiceSearchHref(invoiceSearch)}>
+							Search all invoices
+						</Link>
+					</p>
 					<div className='overflow-x-auto rounded-md border border-zinc-200 bg-white'>
 						<Table>
 							<TableHeader className='bg-zinc-50'>
@@ -475,8 +482,8 @@ const Revenue = () => {
 														event.stopPropagation();
 														setSelectedInvoiceId(invoice.id);
 													}}
-													aria-label={`Open ${invoice.invoice_number || invoice.id} details`}>
-													<span className='block font-medium text-zinc-950'>{invoice.invoice_number || 'Number pending'}</span>
+													aria-label={`Open ${invoiceReference(invoice)} details`}>
+													<span className='block font-medium text-zinc-950'>{invoiceReference(invoice)}</span>
 													<span className='mt-0.5 block truncate font-mono text-[11px] text-zinc-500'>
 														{invoice.idempotency_key || invoice.id}
 													</span>
@@ -853,7 +860,7 @@ const InvoiceDetailSheet = ({
 	});
 	const downloadMutation = useMutation({
 		mutationFn: async () => {
-			if (invoiceId) await InvoiceApi.getInvoicePdf(invoiceId, invoiceQuery.data?.invoice_number);
+			if (invoiceId) await InvoiceApi.getInvoicePdf(invoiceId, invoiceReference(invoiceQuery.data));
 		},
 		onError: () => toast.error('Could not download this invoice PDF.'),
 	});
@@ -871,7 +878,7 @@ const InvoiceDetailSheet = ({
 				className='m-0 flex h-full max-h-screen w-[min(94vw,680px)] flex-col rounded-none p-0 sm:max-w-[680px] motion-reduce:duration-0'>
 				<div className='sticky top-0 z-10 border-b border-zinc-200 bg-white px-6 py-5 pr-12'>
 					<SheetHeader>
-						<SheetTitle>{invoice?.invoice_number || 'Invoice details'}</SheetTitle>
+						<SheetTitle>{invoice ? invoiceReference(invoice) : 'Invoice details'}</SheetTitle>
 						<SheetDescription>{invoice?.idempotency_key || invoiceId || 'Loading invoice information'}</SheetDescription>
 					</SheetHeader>
 				</div>

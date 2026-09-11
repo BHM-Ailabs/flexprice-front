@@ -1,3 +1,4 @@
+import { invoiceReference } from '@/utils/invoices/invoiceReference';
 import { Spacer, Divider, Loader, Card, Page } from '@/components/atoms';
 import { ApiDocsContent, CreditNoteLineItemTable } from '@/components/molecules';
 import { useBreadcrumbsStore } from '@/store/useBreadcrumbsStore';
@@ -94,7 +95,7 @@ const CreditNoteDetails: FC<Props> = ({ credit_note_id, breadcrumb_index }) => {
 						<div className='text-[#09090B] text-sm'>
 							{data?.invoice && (
 								<Link to={`${RouteNames.invoices}/${data.invoice.id}`} className='text-[#09090B] text-sm font-medium hover:underline'>
-									{data.invoice.invoice_number || data.invoice.id.slice(0, 8)}
+									{invoiceReference(data.invoice)}
 								</Link>
 							)}
 						</div>
