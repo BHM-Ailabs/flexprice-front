@@ -6,6 +6,7 @@ import { billingGet, type WorkspaceCreditEntry, type WorkspaceCreditsResponse } 
 import { getPlaqadUser } from '@/core/auth/PlaqadAuth';
 import { BillingPage, ErrorNotice, Field, Panel, date, fieldClass, number, tableClass } from './shared';
 import { creditPaymentAmount, workspaceCreditsQuery } from './workspaceCredits';
+import WorkspaceCreditSelector from './WorkspaceCreditSelector';
 
 const precise = (value: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }).format(value);
 const effects: Record<WorkspaceCreditEntry['effect'], string> = {
@@ -94,8 +95,8 @@ function CreditEvidence({ entry }: { entry: WorkspaceCreditEntry }) {
 				</dl>
 				{entry.mirror && (
 					<p>
-						Native usage mirror: {entry.mirror.sent} sent, {entry.mirror.pending} pending, {entry.mirror.sending} sending,{' '}
-						{entry.mirror.dead} failed. Mirror status does not change the Auth credit balance.
+						Usage reporting to BSP: {entry.mirror.sent} sent, {entry.mirror.pending} pending, {entry.mirror.sending} sending,{' '}
+						{entry.mirror.dead} failed. Reporting status does not change the Plaqad Account credit balance.
 					</p>
 				)}
 			</div>
@@ -293,6 +294,11 @@ export default function WorkspaceCreditsPage() {
 	const customerId = params.get('customerId') || '';
 	const [input, setInput] = useState(workspaceId);
 	const [error, setError] = useState<unknown>(null);
+	function selectWorkspace(id: string) {
+		workspaceCreditsQuery(id);
+		setParams(id === workspaceId && customerId ? { workspaceId: id, customerId } : { workspaceId: id });
+		setError(null);
+	}
 	useEffect(() => {
 		setInput(workspaceId);
 		setError(null);
@@ -301,9 +307,7 @@ export default function WorkspaceCreditsPage() {
 		event.preventDefault();
 		try {
 			const id = input.trim();
-			workspaceCreditsQuery(id);
-			setParams({ workspaceId: id });
-			setError(null);
+			selectWorkspace(id);
 		} catch (cause) {
 			setError(cause);
 		}
@@ -311,44 +315,50 @@ export default function WorkspaceCreditsPage() {
 	return (
 		<BillingPage
 			title='Workspace credits'
-			description='Inspect the authoritative Plaqad Account balance, credit activity and recorded pricing for a workspace.'>
+			description='View the Plaqad Account balance, credit activity and recorded pricing for a workspace.'>
 			<Panel title='Workspace'>
-				<form onSubmit={apply} className='flex flex-wrap items-end gap-3'>
-					<div className='min-w-64 flex-1'>
-						<Field label='Workspace ID'>
-							<input
-								className={fieldClass}
-								value={input}
-								onChange={(event) => setInput(event.target.value)}
-								placeholder='ws_…'
-								maxLength={160}
-								required
-							/>
-						</Field>
-					</div>
-					<Button variant='black' type='submit'>
-						View credits
-					</Button>
-				</form>
+				<WorkspaceCreditSelector selectedId={workspaceId} onSelect={selectWorkspace} />
+				<details>
+					<summary className='mb-3 cursor-pointer rounded text-xs text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600'>
+						Open by workspace ID
+					</summary>
+					<form onSubmit={apply} className='flex flex-wrap items-end gap-3'>
+						<div className='min-w-64 flex-1'>
+							<Field label='Workspace ID'>
+								<input
+									className={fieldClass}
+									value={input}
+									onChange={(event) => setInput(event.target.value)}
+									placeholder='Workspace ID'
+									maxLength={160}
+									required
+								/>
+							</Field>
+						</div>
+						<Button variant='black' type='submit'>
+							View credits
+						</Button>
+					</form>
+				</details>
 				{customerId && (
 					<p className='mt-3 text-xs text-zinc-500'>
-						Opened from{' '}
+						Linked to{' '}
 						<Link to={`/billing/customers/${encodeURIComponent(customerId)}`} className='underline'>
-							customer {customerId}
-						</Link>
-						. The API verifies that its external ID matches this workspace.
+							this customer’s
+						</Link>{' '}
+						Plaqad workspace.
 					</p>
 				)}
 				<p className='mt-3 text-xs leading-5 text-zinc-500'>
-					These are Plaqad application credits. Native billing wallets track separate invoice funding. No credits are issued or synchronized
-					by opening this page.
+					Balances and activity come directly from Plaqad Account and refresh every minute. Billing wallets separately track funds for
+					invoices.
 				</p>
 			</Panel>
 			<ErrorNotice error={error} />
 			{workspaceId ? (
 				<WorkspaceCreditReport key={`${workspaceId}:${customerId}`} workspaceId={workspaceId} customerId={customerId} />
 			) : (
-				<p className='text-sm text-zinc-500'>Enter a workspace ID or open Workspace credits from a customer profile.</p>
+				<p className='text-sm text-zinc-500'>Find a workspace above or open Workspace credits from a customer profile.</p>
 			)}
 		</BillingPage>
 	);

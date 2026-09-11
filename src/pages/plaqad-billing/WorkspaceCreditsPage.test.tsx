@@ -18,7 +18,7 @@ vi.mock('@/api/PlaqadBillingApi', () => ({ billingGet: vi.fn() }));
 vi.mock('@/core/auth/PlaqadAuth', () => ({ getPlaqadUser: () => ({ sub: 'admin_example' }) }));
 import { billingGet, type WorkspaceCreditsResponse, type WorkspaceCreditEntry } from '@/api/PlaqadBillingApi';
 import WorkspaceCreditsPage from './WorkspaceCreditsPage';
-import { creditPaymentAmount, workspaceCreditsHref, workspaceCreditsQuery } from './workspaceCredits';
+import { creditPaymentAmount, customerWorkspaceCreditsHref, workspaceCreditsHref, workspaceCreditsQuery } from './workspaceCredits';
 const debit: WorkspaceCreditEntry = {
 	id: 'ledger_usage',
 	ledgerId: 'ledger_usage',
@@ -144,6 +144,7 @@ describe('workspace credits read model', () => {
 	it('does not request all workspaces or accept an invalid workspace id', async () => {
 		mount('/billing/workspace-credits');
 		expect(billingGet).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByText('Open by workspace ID'));
 		fireEvent.change(screen.getByLabelText('Workspace ID'), { target: { value: 'another-customer' } });
 		fireEvent.click(screen.getByRole('button', { name: 'View credits' }));
 		expect(screen.getByRole('alert')).toHaveTextContent('valid Plaqad workspace');
@@ -168,6 +169,7 @@ describe('workspace credits read model', () => {
 			workspace: { ...response.workspace, id: 'ws_b', name: 'Second workspace' },
 			customer: null,
 		});
+		fireEvent.click(screen.getByText('Open by workspace ID'));
 		fireEvent.change(screen.getByLabelText('Workspace ID'), { target: { value: ' ws_b ' } });
 		fireEvent.click(screen.getByRole('button', { name: 'View credits' }));
 		await screen.findByText('Second workspace');
@@ -178,11 +180,46 @@ describe('workspace credits read model', () => {
 		mount();
 		await screen.findByText('Example workspace');
 		vi.mocked(billingGet).mockImplementation(() => new Promise(() => {}));
+		fireEvent.click(screen.getByText('Open by workspace ID'));
 		fireEvent.change(screen.getByLabelText('Workspace ID'), { target: { value: 'ws_b' } });
 		fireEvent.click(screen.getByRole('button', { name: 'View credits' }));
 		await screen.findByText('Loading workspace credits…');
 		expect(screen.queryByText('Example workspace')).not.toBeInTheDocument();
 		expect(screen.queryByText('Available credits')).not.toBeInTheDocument();
+	});
+	it('keeps the customer check for the same selection and clears it for another workspace', async () => {
+		vi.mocked(billingGet).mockImplementation(async (path) =>
+			path.startsWith('/workspace-credits/workspaces?')
+				? {
+						workspaces: [response.workspace, { ...response.workspace, id: 'ws_b', name: 'Second workspace' }],
+						hasMore: false,
+					}
+				: path.includes('workspaceId=ws_b')
+					? { ...response, workspace: { ...response.workspace, id: 'ws_b', name: 'Second workspace' }, customer: null }
+					: structuredClone(response),
+		);
+		mount();
+		await screen.findByText('Example workspace');
+		fireEvent.focus(screen.getByLabelText('Find workspace'));
+		fireEvent.click(await screen.findByRole('button', { name: /Example workspace.*Selected/ }));
+		expect(screen.getByRole('link', { name: 'this customer’s' })).toBeInTheDocument();
+		fireEvent.focus(screen.getByLabelText('Find workspace'));
+		fireEvent.click(await screen.findByRole('button', { name: /Second workspace.*View credits/ }));
+		await screen.findByText('Second workspace');
+		expect(screen.queryByRole('link', { name: 'this customer’s' })).not.toBeInTheDocument();
+		expect(billingGet).toHaveBeenLastCalledWith(workspaceCreditsQuery('ws_b'), expect.any(AbortSignal));
+	});
+	it('opens a legacy UUID customer link with the exact workspace and customer attribution', async () => {
+		const workspaceId = '11111111-2222-4333-8444-555555555555';
+		vi.mocked(billingGet).mockResolvedValue({
+			...response,
+			workspace: { ...response.workspace, id: workspaceId },
+			customer: { id: 'cust_a', externalId: workspaceId },
+		});
+		mount(customerWorkspaceCreditsHref(workspaceId, 'cust_a')!);
+		await screen.findByText('Example workspace');
+		expect(billingGet).toHaveBeenCalledWith(workspaceCreditsQuery(workspaceId, 'cust_a'), expect.any(AbortSignal));
+		expect(screen.getByRole('link', { name: 'this customer’s' })).toBeInTheDocument();
 	});
 	it('removes cached financial results when refresh denies the admin session', async () => {
 		mount();
@@ -287,6 +324,8 @@ describe('workspace credit links and amounts', () => {
 		expect(url.searchParams.get('workspaceId')).toBe('ws_a');
 		expect(url.searchParams.get('customerId')).toBe('cust_a');
 		expect(() => workspaceCreditsQuery('ws_a', 'cust/a')).toThrow();
+		expect(customerWorkspaceCreditsHref('not-a-workspace', 'cust_a')).toBeNull();
+		expect(customerWorkspaceCreditsHref(undefined, 'cust_a')).toBeNull();
 	});
 	it('renders paid minor-unit amounts using currency precision', () => {
 		expect(creditPaymentAmount(33149406, 'NGN')).toContain('331,494.06');

@@ -226,6 +226,11 @@ export interface WorkspaceCreditsResponse {
 	coverage: { message: string };
 }
 
+export interface CreditWorkspacesResponse {
+	workspaces: Array<{ id: string; name: string; slug: string; status: string }>;
+	hasMore: boolean;
+}
+
 export interface PrepaidInvoice {
 	collectionMethod?: 'gateway' | 'manual';
 	manualPaymentInstructions?: string | null;
