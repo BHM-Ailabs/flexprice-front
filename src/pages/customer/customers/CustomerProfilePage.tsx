@@ -1,4 +1,4 @@
-import { Outlet, useNavigate, useParams, useLocation } from 'react-router';
+import { Link, Outlet, useNavigate, useParams, useLocation } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useBreadcrumbsStore } from '@/store';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,8 @@ import { AlertCircle } from 'lucide-react';
 import { ENTITY_STATUS } from '@/models';
 import CustomerHeader from '@/components/molecules/Customer/CustomerHeader';
 import { RouteNames } from '@/core/routes/Routes';
+import { PLAQAD_AUTH_ENABLED } from '@/core/auth/PlaqadAuth';
+import { workspaceCreditsHref } from '@/pages/plaqad-billing/workspaceCredits';
 
 const tabs = [
 	{ id: '', label: 'Overview' },
@@ -86,6 +88,16 @@ const CustomerProfilePage = () => {
 		<Page className='space-y-6'>
 			<ApiDocsContent tags={['Customers']} />
 			<CustomerHeader customerId={customerId!} />
+			{PLAQAD_AUTH_ENABLED && customerId && customer?.id === customerId && customer.external_id?.startsWith('ws_') && (
+				<div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3'>
+					<p className='text-sm text-zinc-600'>Plaqad workspace credits are recorded in the Account ledger.</p>
+					<Link
+						to={workspaceCreditsHref(customer.external_id, customerId)}
+						className='rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600'>
+						View workspace credits
+					</Link>
+				</div>
+			)}
 
 			{isArchived && (
 				<div className='flex mt-4 items-center gap-2 py-3 px-4	 bg-yellow-50 border border-yellow-200 rounded-lg'>

@@ -30,6 +30,7 @@ import { refetchQueries } from '@/core/services/tanstack/ReactQueryProvider';
 import { logger } from '@/utils/common/Logger';
 import { ServerError } from '@/core/axios/types';
 import { PremiumFeatureIcon } from '@/components/molecules/PremiumFeature/PremiumFeature';
+import { PLAQAD_AUTH_ENABLED } from '@/core/auth/PlaqadAuth';
 
 const formatWalletStatus = (status?: string) => {
 	const statusMap: Record<string, string> = {
@@ -210,6 +211,15 @@ const CustomerWalletTab = () => {
 	return (
 		<div className='space-y-6'>
 			<ApiDocsContent tags={['Wallets', 'Topup']} />
+			{PLAQAD_AUTH_ENABLED && (
+				<div className='rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600'>
+					<p className='font-medium text-zinc-900'>Native billing wallet</p>
+					<p className='mt-1'>
+						These funds cover native billing invoices. Plaqad application credits, usage and balance appear in Workspace credits from the
+						customer profile.
+					</p>
+				</div>
+			)}
 
 			{/* Create Wallet Modal */}
 			<CreateCustomerWalletModal

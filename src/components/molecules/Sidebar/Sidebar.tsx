@@ -61,6 +61,7 @@ const AppSidebar: React.FC<React.ComponentProps<typeof Sidebar>> = ({ ...props }
 							{ title: 'Prepaid invoices', url: RouteNames.prepaidInvoices },
 							{ title: 'Usage markup', url: RouteNames.plaqadPricing },
 							{ title: 'User usage', url: RouteNames.plaqadUsage },
+							{ title: 'Workspace credits', url: RouteNames.workspaceCredits },
 						]
 					: []),
 				{

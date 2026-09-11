@@ -19,7 +19,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 	const response = await fetch(`${AUTH_URL}${BILLING}${path}`, {
 		...init,
 		headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${token}` },
-		signal: AbortSignal.timeout(30_000),
+		signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
 	});
 	if (response.status === 401) await reauthenticatePlaqad();
 	if (!response.ok) {
@@ -29,8 +29,8 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 	return response;
 }
 
-export async function billingGet<T>(path: string): Promise<T> {
-	return (await request(path)).json();
+export async function billingGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+	return (await request(path, { signal })).json();
 }
 export async function billingPost<T>(path: string, body: unknown): Promise<T> {
 	return (await request(path, { method: 'POST', body: JSON.stringify(body) })).json();
@@ -139,6 +139,91 @@ export interface UsageResponse {
 	items: UsageRow[];
 	pagination: { limit: number; offset: number; total: number };
 	coverage: { message: string; costAvailable: boolean; historicalPlanOperationsWithoutActuals: number };
+}
+
+export interface WorkspaceCreditEntry {
+	id: string;
+	ledgerId: string | null;
+	ts: string;
+	type: string;
+	amount: number;
+	effect: 'award' | 'usage_debit' | 'consumption_refund' | 'hold' | 'hold_release' | 'expiry' | 'adjustment' | 'plan_usage' | 'other';
+	application: string | null;
+	serviceId: string | null;
+	serviceName: string | null;
+	actor: { type: string | null; id: string | null };
+	bucket: string | null;
+	reasonCode: string | null;
+	callId: string | null;
+	reservationId: string | null;
+	catalogVersion: number | null;
+	plan: {
+		source: string;
+		planLookupKey: string | null;
+		operation: string;
+		actualCreditsEquivalent: number | null;
+		actualPlanUnits: number | null;
+	} | null;
+	rateEvidence: {
+		status: 'catalog_snapshot' | 'reported_credits' | 'payment_snapshot' | 'unavailable' | 'not_applicable';
+		message: string;
+		events: Array<{
+			eventId: string;
+			sku: string | null;
+			units: number | null;
+			credits: number;
+			catalogVersion: number | null;
+			displayName: string | null;
+			unit: string | null;
+			unitScale: number | null;
+			creditPrice: number | null;
+			pricingMode: string | null;
+			markupBps: number | null;
+			usdCostMicro: number | null;
+		}>;
+		payment: {
+			id: string;
+			reference: string;
+			publicReference: string | null;
+			amountMinor: number;
+			currency: string;
+			creditsAwarded: number;
+			fxRateMicro: number | null;
+			fxSpreadBps: number | null;
+			fxSource: string | null;
+			fxAt: string | null;
+		} | null;
+		truncated: boolean;
+	};
+	mirror: { pending: number; sending: number; sent: number; dead: number } | null;
+}
+export interface WorkspaceCreditsResponse {
+	asOf: string;
+	source: 'plaqad_auth';
+	workspace: { id: string; name: string; slug: string; status: string };
+	customer: { id: string; externalId: string } | null;
+	balance: { availableCredits: number; heldCredits: number; totalCredits: number; lockedReason: string | null; updatedAt: string | null };
+	totals: {
+		awardedCredits: number;
+		purchasedCredits: number;
+		openingCredits: number;
+		usedCredits: number;
+		refundedCredits: number;
+		expiredCredits: number;
+		adjustmentNet: number;
+		ledgerBalance: number;
+		reconciliationDelta: number;
+	};
+	planUsage: {
+		includedOperations: number;
+		allowanceOperations: number;
+		actualCreditsEquivalent: number;
+		actualPlanUnits: number;
+		operationsWithoutActuals: number;
+	};
+	items: WorkspaceCreditEntry[];
+	pagination: { limit: number; nextBefore: string | null; hasMore: boolean };
+	coverage: { message: string };
 }
 
 export interface PrepaidInvoice {

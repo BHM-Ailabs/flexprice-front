@@ -31,6 +31,7 @@ export function BillingPage({
 					['/billing/prepaid-invoices', 'Prepaid invoices'],
 					['/billing/plaqad-pricing', 'Usage markup'],
 					['/billing/plaqad-usage', 'User usage'],
+					['/billing/workspace-credits', 'Workspace credits'],
 				]
 					.filter(([path]) => !invoiceOnly || path === '/billing/prepaid-invoices')
 					.map(([path, name]) => (

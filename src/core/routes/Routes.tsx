@@ -97,6 +97,7 @@ import {
 import { RouterErrorElement } from '@/components/atoms/ErrorBoundary';
 import MarkupPage from '@/pages/plaqad-billing/MarkupPage';
 import UsagePage from '@/pages/plaqad-billing/UsagePage';
+import WorkspaceCreditsPage from '@/pages/plaqad-billing/WorkspaceCreditsPage';
 import PrepaidInvoicesPage from '@/pages/plaqad-billing/PrepaidInvoicesPage';
 
 export const RouteNames = {
@@ -135,6 +136,7 @@ export const RouteNames = {
 	analytics: '/billing/analytics',
 	plaqadPricing: '/billing/plaqad-pricing',
 	plaqadUsage: '/billing/plaqad-usage',
+	workspaceCredits: '/billing/workspace-credits',
 	prepaidInvoices: '/billing/prepaid-invoices',
 
 	// product catalog routes
@@ -382,6 +384,7 @@ export const MainRouter = createBrowserRouter([
 				children: [
 					{ path: RouteNames.plaqadPricing, element: <MarkupPage /> },
 					{ path: RouteNames.plaqadUsage, element: <UsagePage /> },
+					{ path: RouteNames.workspaceCredits, element: <WorkspaceCreditsPage /> },
 					{ path: RouteNames.prepaidInvoices, element: <PrepaidInvoicesPage /> },
 					{ path: `${RouteNames.prepaidInvoices}/:invoiceId`, element: <PrepaidInvoicesPage /> },
 					{

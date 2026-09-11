@@ -41,4 +41,19 @@ describe('Plaqad billing transport', () => {
 		});
 		expect(fetcher).toHaveBeenCalledTimes(1);
 	});
+	it('propagates a canceled workspace read without replaying it', async () => {
+		const controller = new AbortController();
+		const fetcher = vi.fn().mockImplementation(
+			(_url, options) =>
+				new Promise((_resolve, reject) => {
+					options.signal.addEventListener('abort', () => reject(options.signal.reason));
+				}),
+		);
+		vi.stubGlobal('fetch', fetcher);
+		const result = billingGet('/workspace-credits?workspaceId=ws_example', controller.signal);
+		await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+		controller.abort();
+		await expect(result).rejects.toMatchObject({ name: 'AbortError' });
+		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
 });
