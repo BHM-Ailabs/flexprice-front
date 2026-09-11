@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AlertCircle } from 'lucide-react';
 import { getTypographyClass } from '@/lib/typography';
 import { useEnvironment } from '@/hooks/useEnvironment';
+import InvoiceCollections from './InvoiceCollections';
 
 const getTimeRangeForPeriod = (period: TIME_PERIOD): { startDate: Date; endDate: Date } => {
 	const endDate = new Date();
@@ -174,6 +175,7 @@ const DashboardPage = () => {
 			}>
 			<ApiDocsContent tags={['Events']} />
 			<div className='space-y-6'>
+				<InvoiceCollections />
 				{/* Events Monitoring Chart */}
 				<div>
 					{monitoringLoading ? (

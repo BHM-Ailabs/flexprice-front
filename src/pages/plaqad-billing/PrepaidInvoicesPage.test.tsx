@@ -27,8 +27,14 @@ vi.mock('@/components/atoms', () => ({
 			</div>
 		) : null,
 }));
-vi.mock('@/api/PlaqadBillingApi', () => ({ billingGet: vi.fn(), billingPost: vi.fn(), downloadInvoice: vi.fn(), invoicePlans: vi.fn() }));
-import { billingGet, billingPost, invoicePlans, type PrepaidInvoice } from '@/api/PlaqadBillingApi';
+vi.mock('@/api/PlaqadBillingApi', () => ({
+	billingGet: vi.fn(),
+	billingPost: vi.fn(),
+	billingPut: vi.fn(),
+	downloadInvoice: vi.fn(),
+	invoicePlans: vi.fn(),
+}));
+import { billingGet, billingPost, billingPut, invoicePlans, type PrepaidInvoice, type PrepaidInvoiceDetail } from '@/api/PlaqadBillingApi';
 import PrepaidInvoicesPage from './PrepaidInvoicesPage';
 
 const fixture: PrepaidInvoice = {
@@ -55,6 +61,7 @@ const fixture: PrepaidInvoice = {
 	checkoutState: 'idle',
 };
 let invoice = { ...fixture };
+let detailExtra: Partial<PrepaidInvoiceDetail> = {};
 function mount(path = '/billing/prepaid-invoices') {
 	return render(
 		<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
@@ -69,7 +76,15 @@ function mount(path = '/billing/prepaid-invoices') {
 beforeEach(() => {
 	vi.clearAllMocks();
 	invoice = { ...fixture };
-	vi.mocked(billingGet).mockImplementation(async (path) => (path === '/invoices' ? { invoices: [invoice] } : { invoice }));
+	detailExtra = {};
+	vi.mocked(billingPut).mockResolvedValue({ profile: { displayName: 'Plaqad', website: 'https://plaqad.com' } });
+	vi.mocked(billingGet).mockImplementation(async (path) =>
+		path === '/invoices'
+			? { invoices: [invoice] }
+			: path === '/document-profile'
+				? { profile: { displayName: 'Plaqad', website: 'https://plaqad.com' } }
+				: { invoice, ...detailExtra },
+	);
 	vi.mocked(billingPost).mockResolvedValue({ invoice, claimUrl: 'https://account.plaqad.com/invoices/test' });
 	vi.mocked(invoicePlans).mockResolvedValue([
 		{ lookupKey: 'intel-pulse', name: 'Intel Pulse', ctaAction: 'subscribe', availableCurrencies: ['NGN', 'USD'] },
@@ -218,5 +233,176 @@ describe('prepaid invoice operator actions', () => {
 		await waitFor(() =>
 			expect(billingPost).toHaveBeenCalledWith('/invoices/inv-test/send', { audience: 'review', reviewEmails: ['reviewer@example.com'] }),
 		);
+	});
+});
+
+describe('manual invoice and issuer controls', () => {
+	it('creates a manual draft with explicit instructions and recipient fields, without sending or settlement', async () => {
+		mount();
+		fireEvent.click(await screen.findByRole('button', { name: 'Create invoice draft' }));
+		const dialog = screen.getByRole('dialog', { name: 'Create prepaid invoice draft' });
+		fireEvent.change(within(dialog).getByLabelText('Customer email'), { target: { value: 'customer@example.com' } });
+		fireEvent.change(within(dialog).getByLabelText(/^Due date/), {
+			target: { value: new Date(Date.now() + 86400000).toISOString().slice(0, 16) },
+		});
+		fireEvent.change(within(dialog).getByLabelText('Collection method'), { target: { value: 'manual' } });
+		fireEvent.change(within(dialog).getByLabelText(/^Manual payment instructions/), {
+			target: { value: 'Verified bank details supplied by operator' },
+		});
+		fireEvent.change(within(dialog).getByLabelText('Customer billing address (optional)'), {
+			target: { value: 'Customer supplied address' },
+		});
+		fireEvent.change(within(dialog).getByLabelText('Customer tax ID (optional)'), { target: { value: 'customer-tax-id' } });
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Save invoice draft' }));
+		await waitFor(() =>
+			expect(billingPost).toHaveBeenCalledWith(
+				'/invoices',
+				expect.objectContaining({
+					collectionMethod: 'manual',
+					manualPaymentInstructions: 'Verified bank details supplied by operator',
+					recipientAddress: 'Customer supplied address',
+					recipientTaxId: 'customer-tax-id',
+				}),
+			),
+		);
+		expect(billingPost).toHaveBeenCalledTimes(1);
+	});
+	it('omits stale manual instructions after switching to gateway', async () => {
+		mount();
+		fireEvent.click(await screen.findByRole('button', { name: 'Create invoice draft' }));
+		const dialog = screen.getByRole('dialog', { name: 'Create prepaid invoice draft' });
+		fireEvent.change(within(dialog).getByLabelText('Customer email'), { target: { value: 'customer@example.com' } });
+		fireEvent.change(within(dialog).getByLabelText(/^Due date/), {
+			target: { value: new Date(Date.now() + 86400000).toISOString().slice(0, 16) },
+		});
+		fireEvent.change(within(dialog).getByLabelText('Collection method'), { target: { value: 'manual' } });
+		fireEvent.change(within(dialog).getByLabelText(/^Manual payment instructions/), { target: { value: 'stale bank instructions' } });
+		fireEvent.change(within(dialog).getByLabelText('Collection method'), { target: { value: 'gateway' } });
+		expect(within(dialog).queryByLabelText(/^Manual payment instructions/)).toBeNull();
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Save invoice draft' }));
+		await waitFor(() => expect(billingPost).toHaveBeenCalledTimes(1));
+		expect(vi.mocked(billingPost).mock.calls[0][1]).not.toHaveProperty('manualPaymentInstructions');
+	});
+	it('records a partial receipt only after explicit evidence confirmation and rejects overpayment', async () => {
+		invoice = {
+			...fixture,
+			collectionMethod: 'manual',
+			status: 'claimed',
+			workspaceId: 'ws_test',
+			providerInvoiceId: 'inv_native',
+			manualPaymentInstructions: 'Verified bank instructions',
+		};
+		detailExtra = { amountPaidMinor: 0, amountRemainingMinor: 33149406, externalPayments: [] };
+		mount('/billing/prepaid-invoices/inv-test');
+		fireEvent.click(await screen.findByRole('button', { name: 'Record received payment' }));
+		const dialog = screen.getByRole('dialog', { name: 'Record received payment' });
+		expect(within(dialog).getByRole('button', { name: 'Record this payment' })).toBeDisabled();
+		fireEvent.change(within(dialog).getByLabelText('Bank or receipt reference'), { target: { value: 'bank-receipt-unique' } });
+		fireEvent.change(within(dialog).getByLabelText('Amount received (NGN)'), { target: { value: '331495.00' } });
+		fireEvent.click(within(dialog).getByRole('checkbox'));
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Record this payment' }));
+		expect(await within(dialog).findByRole('alert')).toHaveTextContent('exceeds');
+		expect(billingPost).not.toHaveBeenCalled();
+		fireEvent.change(within(dialog).getByLabelText('Amount received (NGN)'), { target: { value: '100000.01' } });
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Record this payment' }));
+		await waitFor(() =>
+			expect(billingPost).toHaveBeenCalledWith(
+				'/invoices/inv-test/record-payment',
+				expect.objectContaining({ reference: 'bank-receipt-unique', amountMinor: 10000001, currency: 'NGN', method: 'bank_transfer' }),
+			),
+		);
+		expect(billingPost).toHaveBeenCalledTimes(1);
+	});
+	it('keeps pending evidence immutable when reconciling the same provider payment', async () => {
+		invoice = {
+			...fixture,
+			collectionMethod: 'manual',
+			status: 'payment_pending',
+			workspaceId: 'ws_test',
+			providerInvoiceId: 'inv_native',
+		};
+		const receivedAt = new Date(Date.now() - 86400000).toISOString();
+		detailExtra = {
+			amountPaidMinor: 0,
+			amountRemainingMinor: 33149406,
+			externalPayments: [
+				{
+					id: 'ep_1',
+					prepaidInvoiceId: invoice.id,
+					providerInvoiceId: 'inv_native',
+					reference: 'same-receipt',
+					amountMinor: 100001,
+					currency: 'NGN',
+					method: 'cash',
+					receivedAt,
+					recordedBy: 'admin-test',
+					recordedAt: receivedAt,
+					providerPaymentId: null,
+					confirmedAt: null,
+				},
+			],
+		};
+		mount('/billing/prepaid-invoices/inv-test');
+		fireEvent.click(await screen.findByRole('button', { name: 'Reconcile pending payment' }));
+		const dialog = screen.getByRole('dialog', { name: 'Reconcile received payment' });
+		expect(within(dialog).getByLabelText('Bank or receipt reference')).toHaveAttribute('readonly');
+		fireEvent.click(within(dialog).getByRole('checkbox'));
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Reconcile this payment' }));
+		await waitFor(() =>
+			expect(billingPost).toHaveBeenCalledWith('/invoices/inv-test/record-payment', {
+				reference: 'same-receipt',
+				amountMinor: 100001,
+				currency: 'NGN',
+				method: 'cash',
+				receivedAt,
+			}),
+		);
+	});
+	it('requires verified account attribution before recording manual payment', async () => {
+		invoice = { ...fixture, collectionMethod: 'manual', status: 'issued' };
+		mount('/billing/prepaid-invoices/inv-test');
+		await screen.findByText(/The recipient must open the invoice link/);
+		expect(screen.queryByRole('button', { name: 'Prepare manual invoice' })).toBeNull();
+		expect(screen.queryByRole('button', { name: 'Record received payment' })).toBeNull();
+		expect(billingPost).not.toHaveBeenCalled();
+	});
+	it('loads empty optional issuer fields and saves only operator supplied profile details', async () => {
+		mount();
+		fireEvent.click(await screen.findByRole('button', { name: 'Plaqad invoice details' }));
+		const dialog = screen.getByRole('dialog', { name: 'Plaqad invoice details' });
+		const address = await within(dialog).findByLabelText('Issuer address');
+		expect(address).toHaveValue('');
+		expect(billingPut).not.toHaveBeenCalled();
+		fireEvent.change(address, { target: { value: 'Verified Plaqad address' } });
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Save invoice details' }));
+		await waitFor(() =>
+			expect(billingPut).toHaveBeenCalledWith('/document-profile', {
+				displayName: 'Plaqad',
+				website: 'https://plaqad.com',
+				address: 'Verified Plaqad address',
+			}),
+		);
+		expect(billingPost).not.toHaveBeenCalled();
+	});
+});
+
+describe('owner consent and manual account claims', () => {
+	it('does not offer staff checkout preparation for a recurring gateway plan', async () => {
+		invoice = { ...fixture, kind: 'plan', credits: null, planLookupKey: 'intel-pulse', collectionMethod: 'gateway', status: 'issued' };
+		mount('/billing/prepaid-invoices/inv-test');
+		await screen.findByText(/The customer reviews the plan and recurring payment consent/);
+		expect(screen.queryByRole('button', { name: 'Prepare Paystack link' })).toBeNull();
+		expect(billingPost).not.toHaveBeenCalled();
+	});
+	it('prepares a claimed manual invoice with the verified workspace and no checkout assumption', async () => {
+		invoice = { ...fixture, collectionMethod: 'manual', status: 'claimed', workspaceId: 'ws_claimed' };
+		mount('/billing/prepaid-invoices/inv-test');
+		fireEvent.click(await screen.findByRole('button', { name: 'Prepare manual invoice' }));
+		const dialog = screen.getByRole('dialog', { name: 'Prepare manual invoice' });
+		expect(within(dialog).getByLabelText(/^Customer workspace ID/)).toHaveValue('ws_claimed');
+		fireEvent.click(within(dialog).getByRole('checkbox'));
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Prepare manual invoice' }));
+		await waitFor(() => expect(billingPost).toHaveBeenCalledWith('/invoices/inv-test/prepare-payment', { workspaceId: 'ws_claimed' }));
+		expect(billingPost).toHaveBeenCalledTimes(1);
 	});
 });

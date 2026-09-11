@@ -35,6 +35,32 @@ export async function billingGet<T>(path: string): Promise<T> {
 export async function billingPost<T>(path: string, body: unknown): Promise<T> {
 	return (await request(path, { method: 'POST', body: JSON.stringify(body) })).json();
 }
+export async function billingPut<T>(path: string, body: unknown): Promise<T> {
+	return (await request(path, { method: 'PUT', body: JSON.stringify(body) })).json();
+}
+export interface InvoiceDocumentProfile {
+	displayName: 'Plaqad';
+	website: 'https://plaqad.com';
+	address?: string;
+	email?: string;
+	phone?: string;
+	registrationId?: string;
+	taxId?: string;
+}
+export interface ExternalInvoicePayment {
+	id: string;
+	prepaidInvoiceId: string;
+	providerInvoiceId: string;
+	reference: string;
+	amountMinor: number;
+	currency: string;
+	method: 'bank_transfer' | 'cash' | 'cheque' | 'other';
+	receivedAt: string;
+	recordedBy: string;
+	recordedAt: string;
+	providerPaymentId: string | null;
+	confirmedAt: string | null;
+}
 export async function downloadInvoice(id: string): Promise<void> {
 	const response = await request(`/invoices/${encodeURIComponent(id)}/pdf`);
 	const url = URL.createObjectURL(await response.blob());
@@ -116,6 +142,10 @@ export interface UsageResponse {
 }
 
 export interface PrepaidInvoice {
+	collectionMethod?: 'gateway' | 'manual';
+	manualPaymentInstructions?: string | null;
+	recipientAddress?: string | null;
+	recipientTaxId?: string | null;
 	id: string;
 	invoiceNumber: string;
 	recipientEmail: string;
@@ -141,11 +171,18 @@ export interface PrepaidInvoice {
 	checkoutUrl?: string | null;
 }
 export interface PrepaidInvoiceDetail {
+	externalPayments?: ExternalInvoicePayment[];
+	amountPaidMinor?: number;
+	amountRemainingMinor?: number;
 	invoice: PrepaidInvoice;
 	claimUrl?: string;
 	checkoutUrl?: string | null;
 }
 export interface InvoiceCreate {
+	collectionMethod?: 'gateway' | 'manual';
+	manualPaymentInstructions?: string;
+	recipientAddress?: string;
+	recipientTaxId?: string;
 	idempotencyKey: string;
 	recipientEmail: string;
 	recipientName?: string;

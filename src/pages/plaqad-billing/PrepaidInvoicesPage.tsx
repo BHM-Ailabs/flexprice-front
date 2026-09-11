@@ -13,6 +13,8 @@ import {
 } from '@/api/PlaqadBillingApi';
 import { BillingPage, ErrorNotice, Field, Panel, date, fieldClass, number, tableClass } from './shared';
 import { invoiceMoney, parseAmountMinor, paymentLink, reviewRecipients } from './invoices';
+import InvoiceDocumentProfile from './InvoiceDocumentProfile';
+import ManualInvoicePayments from './ManualInvoicePayments';
 
 const statusLabels: Record<PrepaidInvoice['status'], string> = {
 	draft: 'Draft',
@@ -44,6 +46,10 @@ export default function PrepaidInvoicesPage() {
 	const [createKey, setCreateKey] = useState(() => crypto.randomUUID());
 	const [recipientEmail, setRecipientEmail] = useState('');
 	const [recipientName, setRecipientName] = useState('');
+	const [recipientAddress, setRecipientAddress] = useState('');
+	const [recipientTaxId, setRecipientTaxId] = useState('');
+	const [collectionMethod, setCollectionMethod] = useState<'gateway' | 'manual'>('gateway');
+	const [manualInstructions, setManualInstructions] = useState('');
 	const [kind, setKind] = useState<'credits' | 'plan'>('credits');
 	const [credits, setCredits] = useState('25000');
 	const [currency, setCurrency] = useState('NGN');
@@ -84,11 +90,18 @@ export default function PrepaidInvoicesPage() {
 				idempotencyKey: createKey,
 				recipientEmail: recipientEmail.trim(),
 				recipientName: recipientName.trim() || undefined,
+				recipientAddress: recipientAddress.trim() || undefined,
+				recipientTaxId: recipientTaxId.trim() || undefined,
+				collectionMethod,
 				kind,
 				currency,
 				dueAt: due.toISOString(),
 				note: note.trim() || undefined,
 			};
+			if (collectionMethod === 'manual') {
+				if (!manualInstructions.trim()) throw new Error('Enter the verified manual payment instructions.');
+				payload.manualPaymentInstructions = manualInstructions.trim();
+			}
 			if (kind === 'credits') {
 				const count = Number(credits);
 				if (!Number.isSafeInteger(count) || count < 500 || count > 100000 || count % 100 !== 0)
@@ -137,7 +150,9 @@ export default function PrepaidInvoicesPage() {
 					: delivery === 'issue'
 						? 'Invoice issued. No email has been sent.'
 						: delivery === 'prepare'
-							? 'Payment link prepared. The customer has not been emailed.'
+							? invoice?.collectionMethod === 'manual'
+								? 'Manual invoice prepared for the verified account. No email has been sent.'
+								: 'Payment link prepared. The customer has not been emailed.'
 							: delivery === 'review'
 								? 'Review copy sent. The customer has not been emailed.'
 								: `Invoice sent to ${invoice?.recipientEmail}.`,
@@ -173,7 +188,7 @@ export default function PrepaidInvoicesPage() {
 	return (
 		<BillingPage
 			title='Prepaid invoices'
-			description='Prepare credit top-ups or plan invoices for an email address. Review the invoice, then issue a payment link tied to the customer’s Plaqad account.'>
+			description='Prepare credit top-ups or plan invoices for an email address. Collect through hosted checkout or record verified manual payments against the customer’s Plaqad account.'>
 			<ErrorNotice
 				error={list.error || detail.error || (!creating ? error : null)}
 				retry={() => {
@@ -198,6 +213,7 @@ export default function PrepaidInvoicesPage() {
 						/>
 					</Field>
 				</div>
+				<InvoiceDocumentProfile />
 				<Button
 					variant='black'
 					onClick={() => {
@@ -269,6 +285,8 @@ export default function PrepaidInvoicesPage() {
 							<p className='text-xs text-zinc-500'>Bill to</p>
 							<p className='mt-1 font-medium'>{invoice.recipientName || invoice.recipientEmail}</p>
 							<p className='text-sm text-zinc-600'>{invoice.recipientEmail}</p>
+							{invoice.recipientAddress && <p className='whitespace-pre-wrap text-sm'>{invoice.recipientAddress}</p>}
+							{invoice.recipientTaxId && <p className='text-sm'>Tax ID: {invoice.recipientTaxId}</p>}
 							<p className='mt-4 text-sm text-zinc-500'>Due {date(invoice.dueAt)}</p>
 						</div>
 						<div className='sm:text-right'>
@@ -290,6 +308,16 @@ export default function PrepaidInvoicesPage() {
 					)}
 					{invoice.note && <p className='mt-5 whitespace-pre-wrap text-sm text-zinc-600'>{invoice.note}</p>}
 					{invoice.workspaceId && <p className='mt-4 text-xs text-zinc-500'>Customer workspace: {invoice.workspaceId}</p>}
+					{detail.data?.claimUrl?.startsWith('https://account.plaqad.com/') && (
+						<p className='mt-4 text-sm'>
+							<a href={detail.data.claimUrl} target='_blank' rel='noopener noreferrer' className='underline'>
+								Customer account and invoice link
+							</a>
+						</p>
+					)}
+					{invoice.collectionMethod === 'manual' && detail.data && (
+						<ManualInvoicePayments key={invoice.id} detail={detail.data} refresh={invalidate} />
+					)}
 					{checkoutUrl && (
 						<div className='mt-5 rounded-md border border-zinc-200 bg-zinc-50 p-4'>
 							<p className='mb-2 text-sm font-medium'>Customer payment link</p>
@@ -331,11 +359,20 @@ export default function PrepaidInvoicesPage() {
 								Issue invoice
 							</Button>
 						)}
-						{['issued', 'claimed', 'payment_pending'].includes(invoice.status) && !invoice.expired && !checkoutUrl && (
-							<Button variant='outline' onClick={() => openDelivery('prepare')}>
-								{invoice.currency === 'NGN' ? 'Prepare Paystack link' : 'Prepare payment link'}
-							</Button>
-						)}
+						{['issued', 'claimed', 'payment_pending'].includes(invoice.status) &&
+							!invoice.expired &&
+							!checkoutUrl &&
+							(invoice.collectionMethod === 'manual'
+								? Boolean(invoice.workspaceId) && invoice.status !== 'issued' && !invoice.providerInvoiceId
+								: invoice.kind === 'credits') && (
+								<Button variant='outline' onClick={() => openDelivery('prepare')}>
+									{invoice.collectionMethod === 'manual'
+										? 'Prepare manual invoice'
+										: invoice.currency === 'NGN'
+											? 'Prepare Paystack link'
+											: 'Prepare payment link'}
+								</Button>
+							)}
 						{['issued', 'claimed', 'payment_pending'].includes(invoice.status) && !invoice.expired && (
 							<Button variant='black' onClick={() => openDelivery('recipient')}>
 								Send invoice to customer
@@ -347,6 +384,17 @@ export default function PrepaidInvoicesPage() {
 							</Button>
 						)}
 					</div>
+					{invoice.kind === 'plan' && invoice.collectionMethod !== 'manual' && (
+						<p className='mt-3 text-xs text-zinc-500'>
+							The customer reviews the plan and recurring payment consent from their account invoice link before starting checkout.
+						</p>
+					)}
+					{invoice.collectionMethod === 'manual' && !invoice.workspaceId && (
+						<p className='mt-3 text-xs text-zinc-500'>
+							The recipient must open the invoice link and claim it with their verified account before staff can prepare or reconcile a
+							manual payment.
+						</p>
+					)}
 					{invoice.status === 'draft' && (
 						<p className='mt-3 text-xs text-zinc-500'>
 							Drafts cannot be paid. Issue the reviewed invoice first, then send it to the customer.
@@ -377,6 +425,38 @@ export default function PrepaidInvoicesPage() {
 						<Field label='Customer name (optional)'>
 							<input className={fieldClass} maxLength={160} value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
 						</Field>
+						<Field label='Customer billing address (optional)'>
+							<textarea
+								className={fieldClass}
+								maxLength={1000}
+								value={recipientAddress}
+								onChange={(e) => setRecipientAddress(e.target.value)}
+							/>
+						</Field>
+						<Field label='Customer tax ID (optional)'>
+							<input className={fieldClass} maxLength={100} value={recipientTaxId} onChange={(e) => setRecipientTaxId(e.target.value)} />
+						</Field>
+						<Field label='Collection method'>
+							<select
+								className={fieldClass}
+								value={collectionMethod}
+								onChange={(e) => setCollectionMethod(e.target.value as 'gateway' | 'manual')}>
+								<option value='gateway'>Hosted payment checkout</option>
+								<option value='manual'>Manual payment</option>
+							</select>
+						</Field>
+						{collectionMethod === 'manual' && (
+							<Field label='Manual payment instructions' help='Use verified bank or payment details. These appear on the invoice.'>
+								<textarea
+									required
+									className={fieldClass}
+									rows={4}
+									maxLength={2000}
+									value={manualInstructions}
+									onChange={(e) => setManualInstructions(e.target.value)}
+								/>
+							</Field>
+						)}
 						<Field label='Purchase'>
 							<select className={fieldClass} value={kind} onChange={(e) => setKind(e.target.value as 'credits' | 'plan')}>
 								<option value='credits'>Prepaid credits</option>
@@ -505,7 +585,9 @@ export default function PrepaidInvoicesPage() {
 							: delivery === 'issue'
 								? 'Issue this invoice?'
 								: delivery === 'prepare'
-									? 'Prepare customer payment link'
+									? invoice?.collectionMethod === 'manual'
+										? 'Prepare manual invoice'
+										: 'Prepare customer payment link'
 									: 'Send invoice to customer'
 				}
 				description={
@@ -516,7 +598,9 @@ export default function PrepaidInvoicesPage() {
 							: delivery === 'issue'
 								? 'This makes the reviewed invoice payable. No email is sent in this step.'
 								: delivery === 'prepare'
-									? 'Creates the unpaid invoice and hosted checkout for the verified customer workspace. It does not charge a card or send email.'
+									? invoice?.collectionMethod === 'manual'
+										? 'Creates an unpaid invoice attributed to the verified customer workspace. Actual received payments are recorded separately; no email is sent.'
+										: 'Creates the unpaid invoice and hosted checkout for the verified customer workspace. It does not charge a card or send email.'
 									: 'This sends the issued invoice, payment invitation and PDF to the customer.'
 				}>
 				{invoice && (
@@ -582,7 +666,9 @@ export default function PrepaidInvoicesPage() {
 								: delivery === 'issue'
 									? 'Issue invoice'
 									: delivery === 'prepare'
-										? 'Prepare payment link'
+										? invoice?.collectionMethod === 'manual'
+											? 'Prepare manual invoice'
+											: 'Prepare payment link'
 										: 'Send to customer'}
 					</Button>
 				</div>

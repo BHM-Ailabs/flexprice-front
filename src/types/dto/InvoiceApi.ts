@@ -38,6 +38,8 @@ export interface InvoiceFilter {
 	payment_status?: string[];
 	amount_due_gt?: number;
 	amount_remaining_gt?: number;
+	reporting_date_gte?: string;
+	reporting_date_lt?: string;
 	period_start_gte?: string;
 	period_start_lte?: string;
 	period_end_gte?: string;

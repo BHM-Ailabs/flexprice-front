@@ -39,6 +39,7 @@ import type {
 } from '@/types/dto/RevenueDashboard';
 import { formatRevenueCurrency } from '@/lib/revenueDashboard';
 import { cn } from '@/lib/utils';
+import { useEnvironment } from '@/hooks/useEnvironment';
 
 type RevenueFilterValue = 'this_month' | 'this_quarter' | 'this_year' | 'last_month' | 'last_quarter' | 'last_year';
 
@@ -163,6 +164,8 @@ const calculateDelta = (current: number, previous: number) => {
 
 const Revenue = () => {
 	const navigate = useNavigate();
+	const { activeEnvironment } = useEnvironment();
+	const environmentId = activeEnvironment?.id;
 	const [selectedFilter, setSelectedFilter] = useState<RevenueFilterValue>('this_quarter');
 	const [selectedCurrency, setSelectedCurrency] = useState('');
 	const [invoicePage, setInvoicePage] = useState(1);
@@ -173,11 +176,10 @@ const Revenue = () => {
 	const previousRange = useMemo(() => getComparablePreviousRange(start, end, shiftMonths), [end, shiftMonths, start]);
 	const startIso = start.toISOString();
 	const endIso = end.toISOString();
-	const inclusiveEndIso = new Date(end.getTime() - 1).toISOString();
 	const windowSize = selectedFilter.endsWith('year') ? 'MONTH' : 'DAY';
 
 	const revenueQuery = useQuery({
-		queryKey: ['revenue-dashboard', selectedFilter, startIso, endIso, windowSize],
+		queryKey: ['revenue-dashboard', environmentId, selectedFilter, startIso, endIso, windowSize],
 		queryFn: () =>
 			RevenueDashboardApi.getRevenueDashboard({
 				period_start: startIso,
@@ -190,6 +192,7 @@ const Revenue = () => {
 	const previousRevenueQuery = useQuery({
 		queryKey: [
 			'revenue-dashboard-comparison',
+			environmentId,
 			selectedFilter,
 			previousRange.start.toISOString(),
 			previousRange.end.toISOString(),
@@ -227,7 +230,7 @@ const Revenue = () => {
 	useEffect(() => setInvoicePage(1), [debouncedInvoiceSearch, selectedCurrency]);
 
 	const invoiceQuery = useQuery({
-		queryKey: ['revenue-invoices', selectedFilter, selectedCurrency, debouncedInvoiceSearch, invoicePage, startIso, inclusiveEndIso],
+		queryKey: ['revenue-invoices', environmentId, selectedFilter, selectedCurrency, debouncedInvoiceSearch, invoicePage, startIso, endIso],
 		enabled: Boolean(selectedCurrency),
 		queryFn: () =>
 			InvoiceApi.listInvoices({
@@ -236,8 +239,8 @@ const Revenue = () => {
 				offset: (invoicePage - 1) * INVOICE_PAGE_SIZE,
 				currency: selectedCurrency,
 				invoice_status: [INVOICE_STATUS.FINALIZED],
-				period_start_gte: startIso,
-				period_start_lte: inclusiveEndIso,
+				reporting_date_gte: startIso,
+				reporting_date_lt: endIso,
 				skip_line_items: true,
 				sort: [{ field: 'created_at', direction: SortDirection.DESC }],
 			}),
@@ -263,7 +266,7 @@ const Revenue = () => {
 			detail: `${collection.invoice_count} finalized invoice${collection.invoice_count === 1 ? '' : 's'}`,
 		},
 		{
-			label: 'Total amount paid',
+			label: 'Collected against invoices',
 			value: formatRevenueCurrency(toNumber(collection.total_paid), selectedCurrency),
 			delta: calculateDelta(toNumber(collection.total_paid), toNumber(previousCollection.total_paid)),
 			detail: `${collection.paid_invoice_count} fully paid`,
@@ -312,11 +315,12 @@ const Revenue = () => {
 			<div className='space-y-8 pt-2'>
 				<div className='flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-5'>
 					<p className='max-w-2xl text-sm text-zinc-600'>
-						Invoice collection, recognized revenue, and receivables aging. Every figure is isolated by invoice currency.
+						Current balances for invoices in this period, grouped by service-period start or issue date for undated one-offs. Collections
+						include prepaid credit purchases; service-period revenue excludes undated purchases. Currencies are kept separate.
 					</p>
 					<div className='flex items-center gap-2 text-xs text-zinc-500'>
 						<span>
-							{formatDate(startIso)} – {formatDate(inclusiveEndIso)}
+							{formatDate(startIso)} – {formatDate(endIso)}
 						</span>
 						<span aria-hidden='true'>·</span>
 						<span>No FX conversion</span>
@@ -351,8 +355,8 @@ const Revenue = () => {
 
 				<section className='grid gap-5 xl:grid-cols-2' aria-label='Revenue trends'>
 					<TrendPanel
-						title='Recognized revenue'
-						detail='Finalized line-item revenue by service period'
+						title='Service-period revenue'
+						detail='Finalized, dated line items in this invoice cohort; not an accounting recognition schedule'
 						loading={isLoading}
 						empty={graphData.length === 0}
 						legend={[{ label: 'Recognized', color: 'bg-zinc-900' }]}>
@@ -391,7 +395,7 @@ const Revenue = () => {
 
 					<TrendPanel
 						title='Invoice collection'
-						detail='Amount invoiced compared with cash paid'
+						detail='Current paid balances grouped by invoice date, not payment or refund date'
 						loading={isLoading}
 						empty={graphData.length === 0}
 						legend={[
@@ -836,13 +840,14 @@ const InvoiceDetailSheet = ({
 	onClose: () => void;
 	onOpenFull: (id: string) => void;
 }) => {
+	const { activeEnvironment } = useEnvironment();
 	const invoiceQuery = useQuery({
-		queryKey: ['revenue-invoice-detail', invoiceId],
+		queryKey: ['revenue-invoice-detail', activeEnvironment?.id, invoiceId],
 		enabled: Boolean(invoiceId),
 		queryFn: () => InvoiceApi.getInvoiceById(invoiceId!),
 	});
 	const paymentsQuery = useQuery({
-		queryKey: ['revenue-invoice-payments', invoiceId],
+		queryKey: ['revenue-invoice-payments', activeEnvironment?.id, invoiceId],
 		enabled: Boolean(invoiceId),
 		queryFn: () => PaymentApi.getAllPayments({ limit: 50, offset: 0, destination_id: invoiceId!, destination_type: 'INVOICE' }),
 	});
