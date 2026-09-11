@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-vi.mock('@/core/auth/PlaqadAuth', () => ({ PLAQAD_AUTH_ENABLED: true, getPlaqadAccessToken: vi.fn() }));
-import { getPlaqadAccessToken } from '@/core/auth/PlaqadAuth';
+vi.mock('@/core/auth/PlaqadAuth', () => ({ PLAQAD_AUTH_ENABLED: true, getPlaqadAccessToken: vi.fn(), reauthenticatePlaqad: vi.fn() }));
+import { getPlaqadAccessToken, reauthenticatePlaqad } from '@/core/auth/PlaqadAuth';
 import { billingGet, billingPost } from './PlaqadBillingApi';
 
 describe('Plaqad billing transport', () => {
@@ -23,6 +23,14 @@ describe('Plaqad billing transport', () => {
 		vi.stubGlobal('fetch', fetcher);
 		await expect(billingPost('/catalog/versions', {})).rejects.toThrow(/expired/);
 		expect(fetcher).not.toHaveBeenCalled();
+	});
+	it('reauthorizes a rejected session without replaying an invoice write', async () => {
+		vi.mocked(reauthenticatePlaqad).mockRejectedValue(new Error('Reauthorizing'));
+		const fetcher = vi.fn().mockResolvedValue(new Response('{}', { status: 401 }));
+		vi.stubGlobal('fetch', fetcher);
+		await expect(billingPost('/invoices', { credits: 500 })).rejects.toThrow('Reauthorizing');
+		expect(reauthenticatePlaqad).toHaveBeenCalledTimes(1);
+		expect(fetcher).toHaveBeenCalledTimes(1);
 	});
 	it('preserves server authorization errors without automatic retries', async () => {
 		const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'MFA required' }), { status: 403 }));

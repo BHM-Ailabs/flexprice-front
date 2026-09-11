@@ -29,7 +29,11 @@ const PlaqadCallback = () => {
 				<section className='w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-8'>
 					<h1 className='text-xl font-semibold'>Sign-in failed</h1>
 					<p className='my-4 text-sm text-zinc-400'>{error}</p>
-					<Button className='w-full bg-white text-zinc-950' onClick={() => void startPlaqadLogin('/')}>
+					<Button
+						className='w-full bg-white text-zinc-950'
+						onClick={() =>
+							void startPlaqadLogin().catch((cause) => setError(cause instanceof Error ? cause.message : 'Unable to restart sign-in.'))
+						}>
 						Try again
 					</Button>
 				</section>

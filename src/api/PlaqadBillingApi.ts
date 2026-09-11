@@ -1,4 +1,4 @@
-import { getPlaqadAccessToken, PLAQAD_AUTH_ENABLED } from '@/core/auth/PlaqadAuth';
+import { getPlaqadAccessToken, PLAQAD_AUTH_ENABLED, reauthenticatePlaqad } from '@/core/auth/PlaqadAuth';
 
 const AUTH_URL = (import.meta.env.VITE_PLAQAD_AUTH_URL || 'https://account-api.plaqad.com').replace(/\/$/, '');
 const BILLING = '/api/v1/admin/billing';
@@ -21,6 +21,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 		headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${token}` },
 		signal: AbortSignal.timeout(30_000),
 	});
+	if (response.status === 401) await reauthenticatePlaqad();
 	if (!response.ok) {
 		const body = (await response.json().catch(() => null)) as { message?: string } | null;
 		throw new PlaqadBillingError(body?.message || `Unable to complete this request (${response.status}).`, response.status);
@@ -81,6 +82,9 @@ export interface UsageSummary {
 	netCredits: number;
 	usageEvents: number;
 	planIncludedOperations: number;
+	planAllowanceOperations: number;
+	planUsageCreditsEquivalent: number;
+	planUnits: number;
 	workspaces: number;
 	users: number;
 }
@@ -98,6 +102,9 @@ export interface UsageRow {
 	netCredits: number;
 	usageEvents: number;
 	planIncludedOperations: number;
+	planAllowanceOperations: number;
+	planUsageCreditsEquivalent: number;
+	planUnits: number;
 	lastUsedAt: string | null;
 }
 export interface UsageResponse {
@@ -105,7 +112,7 @@ export interface UsageResponse {
 	summary: UsageSummary;
 	items: UsageRow[];
 	pagination: { limit: number; offset: number; total: number };
-	coverage: { message: string; costAvailable: boolean };
+	coverage: { message: string; costAvailable: boolean; historicalPlanOperationsWithoutActuals: number };
 }
 
 export interface PrepaidInvoice {

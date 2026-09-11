@@ -1,8 +1,9 @@
 import React, { ReactNode, useEffect } from 'react';
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { useUser } from '@/hooks/UserContext';
 import { PageLoader } from '@/components/atoms';
 import useUserhook from '@/hooks/useUser';
+import { PlaqadReauthenticationError } from './PlaqadAuth';
 
 interface AuthMiddlewareProps {
 	children: ReactNode;
@@ -10,6 +11,7 @@ interface AuthMiddlewareProps {
 }
 const AuthMiddleware: React.FC<AuthMiddlewareProps> = ({ children }) => {
 	const userContext = useUser();
+	const location = useLocation();
 	const { user, loading, error } = useUserhook();
 
 	useEffect(() => {
@@ -18,12 +20,12 @@ const AuthMiddleware: React.FC<AuthMiddlewareProps> = ({ children }) => {
 		}
 	}, [user, userContext]);
 
-	if (loading) {
+	if (loading || error instanceof PlaqadReauthenticationError) {
 		return <PageLoader />;
 	}
 
 	if (error || !user) {
-		return <Navigate to='/auth' />;
+		return <Navigate to='/auth' replace state={{ returnTo: `${location.pathname}${location.search}${location.hash}` }} />;
 	}
 
 	// if (requiredRole && !requiredRole.includes(user.role)) {

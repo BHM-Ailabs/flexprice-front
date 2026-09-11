@@ -24,6 +24,21 @@ interface TokenResponse {
 }
 
 let refreshPromise: Promise<string | null> | null = null;
+let loginPromise: Promise<void> | null = null;
+
+export class PlaqadReauthenticationError extends Error {
+	constructor() {
+		super('Refreshing your Plaqad sign-in…');
+		this.name = 'PlaqadReauthenticationError';
+	}
+}
+
+export function safePlaqadReturnTo(value: unknown): string {
+	if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/';
+	const url = new URL(value, window.location.origin);
+	if (url.origin !== window.location.origin || url.pathname === '/auth' || url.pathname.startsWith('/auth/')) return '/';
+	return `${url.pathname}${url.search}${url.hash}`;
+}
 
 function base64Url(bytes: Uint8Array): string {
 	let value = '';
@@ -44,8 +59,12 @@ function normalizeExpiry(expiresAt: number): number {
 }
 
 function rememberToken(response: TokenResponse): void {
+	const expiresAt = normalizeExpiry(response.expiresAt);
+	if (typeof response.token !== 'string' || !response.token.trim() || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+		throw new Error('Plaqad returned an invalid or expired session. Please sign in again.');
+	}
 	sessionStorage.setItem(TOKEN_KEY, response.token);
-	sessionStorage.setItem(TOKEN_EXPIRY_KEY, String(normalizeExpiry(response.expiresAt)));
+	sessionStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt));
 	if (response.user) sessionStorage.setItem(TOKEN_USER_KEY, JSON.stringify(response.user));
 }
 
@@ -56,15 +75,13 @@ async function readJsonResponse<T>(response: Response, fallback: string): Promis
 	return body;
 }
 
-export async function startPlaqadLogin(returnTo = '/'): Promise<void> {
+async function redirectToPlaqad(returnTo: string): Promise<void> {
 	if (!CLIENT_ID) throw new Error('Plaqad dashboard client is not configured.');
 	const { codeVerifier, codeChallenge } = await generatePkce();
 	const state = crypto.randomUUID();
 	sessionStorage.setItem(PKCE_VERIFIER_KEY, codeVerifier);
 	sessionStorage.setItem(OAUTH_STATE_KEY, state);
-	if (returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.startsWith(PLAQAD_CALLBACK_PATH)) {
-		sessionStorage.setItem(RETURN_TO_KEY, returnTo);
-	}
+	sessionStorage.setItem(RETURN_TO_KEY, safePlaqadReturnTo(returnTo));
 
 	const url = new URL('/authorize', AUTH_URL);
 	url.searchParams.set('client_id', CLIENT_ID);
@@ -74,6 +91,22 @@ export async function startPlaqadLogin(returnTo = '/'): Promise<void> {
 	url.searchParams.set('code_challenge', codeChallenge);
 	url.searchParams.set('code_challenge_method', 'S256');
 	window.location.assign(url.toString());
+}
+
+export function startPlaqadLogin(returnTo = sessionStorage.getItem(RETURN_TO_KEY) || '/'): Promise<void> {
+	// One in-flight redirect prevents parallel requests from replacing PKCE state.
+	loginPromise ??= redirectToPlaqad(returnTo).catch((error) => {
+		loginPromise = null;
+		throw error;
+	});
+	return loginPromise;
+}
+
+export async function reauthenticatePlaqad(): Promise<never> {
+	for (const key of [TOKEN_KEY, TOKEN_EXPIRY_KEY, TOKEN_USER_KEY]) sessionStorage.removeItem(key);
+	const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+	await startPlaqadLogin(safePlaqadReturnTo(currentPath));
+	throw new PlaqadReauthenticationError();
 }
 
 export async function completePlaqadLogin(code: string, state: string): Promise<string> {
@@ -102,6 +135,7 @@ async function refreshPlaqadToken(): Promise<string | null> {
 		credentials: 'include',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ client_id: CLIENT_ID }),
+		signal: AbortSignal.timeout(15_000),
 	});
 	if (!response.ok) return null;
 	const result = await readJsonResponse<TokenResponse>(response, 'Plaqad session refresh failed.');
@@ -110,16 +144,24 @@ async function refreshPlaqadToken(): Promise<string | null> {
 }
 
 export async function getPlaqadAccessToken(): Promise<string | null> {
+	if (loginPromise) {
+		await loginPromise;
+		throw new PlaqadReauthenticationError();
+	}
 	const token = sessionStorage.getItem(TOKEN_KEY);
 	if (!token) return null;
 	const expiresAt = Number(sessionStorage.getItem(TOKEN_EXPIRY_KEY));
-	if (!Number.isFinite(expiresAt) || expiresAt - Date.now() > 60_000) return token;
+	if (Number.isFinite(expiresAt) && expiresAt - Date.now() > 60_000) return token;
 
-	refreshPromise ??= refreshPlaqadToken().finally(() => {
-		refreshPromise = null;
-	});
+	refreshPromise ??= refreshPlaqadToken()
+		.catch(() => null)
+		.finally(() => {
+			refreshPromise = null;
+		});
 	const refreshed = await refreshPromise;
-	if (!refreshed) clearPlaqadSession();
+	// Railway is cross-site: SameSite cookies may be absent even with credentials.
+	// Reauthorize at the top level and never replay an interrupted billing write.
+	if (!refreshed) return reauthenticatePlaqad();
 	return refreshed;
 }
 
@@ -136,10 +178,11 @@ export function getPlaqadUser(): PlaqadUser | null {
 export function consumePlaqadReturnTo(): string {
 	const value = sessionStorage.getItem(RETURN_TO_KEY);
 	sessionStorage.removeItem(RETURN_TO_KEY);
-	return value?.startsWith('/') && !value.startsWith('//') ? value : '/';
+	return safePlaqadReturnTo(value);
 }
 
 export function clearPlaqadSession(): void {
+	loginPromise = null;
 	for (const key of [TOKEN_KEY, TOKEN_EXPIRY_KEY, TOKEN_USER_KEY, PKCE_VERIFIER_KEY, OAUTH_STATE_KEY, RETURN_TO_KEY]) {
 		sessionStorage.removeItem(key);
 	}

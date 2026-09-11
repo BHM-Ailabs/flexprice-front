@@ -56,7 +56,13 @@ const AppSidebar: React.FC<React.ComponentProps<typeof Sidebar>> = ({ ...props }
 			url: RouteNames.customers,
 			icon: Landmark,
 			items: [
-				...(PLAQAD_AUTH_ENABLED ? [{ title: 'Prepaid invoices', url: RouteNames.prepaidInvoices }] : []),
+				...(PLAQAD_AUTH_ENABLED
+					? [
+							{ title: 'Prepaid invoices', url: RouteNames.prepaidInvoices },
+							{ title: 'Usage markup', url: RouteNames.plaqadPricing },
+							{ title: 'User usage', url: RouteNames.plaqadUsage },
+						]
+					: []),
 				{
 					title: 'Customers',
 					url: RouteNames.customers,

@@ -172,7 +172,6 @@ export default function PrepaidInvoicesPage() {
 
 	return (
 		<BillingPage
-			invoiceOnly
 			title='Prepaid invoices'
 			description='Prepare credit top-ups or plan invoices for an email address. Review the invoice, then issue a payment link tied to the customer’s Plaqad account.'>
 			<ErrorNotice

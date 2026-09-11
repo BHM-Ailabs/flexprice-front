@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import EnvironmentApi from '@/api/EnvironmentApi';
 import AuthService from '@/core/auth/AuthService';
+import { PLAQAD_AUTH_ENABLED, reauthenticatePlaqad } from '@/core/auth/PlaqadAuth';
 
 interface RuntimeCredentials {
 	sessionToken: string;
@@ -60,6 +61,7 @@ axiosClient.interceptors.response.use(
 		if (error.response) {
 			switch (error.response.status) {
 				case 401:
+					if (PLAQAD_AUTH_ENABLED && !runtimeCredentials) await reauthenticatePlaqad();
 					await AuthService.logout(false);
 					// Redirect to login or show message
 					break;
